@@ -303,3 +303,115 @@ def export_students_csv(grade=None, section_name=None):
             "Yes" if s["id_distributed"] else "No",
         ])
     return output.getvalue()
+
+
+def get_dashboard_stats():
+    """Comprehensive stats for the dashboard."""
+    conn = get_connection()
+
+    total = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
+    with_photo = conn.execute(
+        "SELECT COUNT(*) FROM students WHERE photo_url != '' AND photo_url IS NOT NULL"
+    ).fetchone()[0]
+    id_printed = conn.execute(
+        "SELECT COUNT(*) FROM students WHERE id_printed=1"
+    ).fetchone()[0]
+    id_distributed = conn.execute(
+        "SELECT COUNT(*) FROM students WHERE id_distributed=1"
+    ).fetchone()[0]
+
+    # Complete info = has LRN, first_name, last_name, emergency_contact_number
+    complete = conn.execute("""
+        SELECT COUNT(*) FROM students
+        WHERE lrn != '' AND lrn IS NOT NULL
+        AND first_name != '' AND first_name IS NOT NULL
+        AND last_name != '' AND last_name IS NOT NULL
+        AND emergency_contact_number != '' AND emergency_contact_number IS NOT NULL
+    """).fetchone()[0]
+
+    # Per grade breakdown
+    grade_stats = conn.execute("""
+        SELECT grade,
+               COUNT(*) as total,
+               SUM(CASE WHEN photo_url != '' AND photo_url IS NOT NULL THEN 1 ELSE 0 END) as with_photo,
+               SUM(CASE WHEN id_printed=1 THEN 1 ELSE 0 END) as printed
+        FROM students
+        GROUP BY grade
+        ORDER BY grade
+    """).fetchall()
+
+    # Per section breakdown
+    section_stats = conn.execute("""
+        SELECT grade, section_name,
+               COUNT(*) as total,
+               SUM(CASE WHEN photo_url != '' AND photo_url IS NOT NULL THEN 1 ELSE 0 END) as with_photo,
+               SUM(CASE WHEN id_printed=1 THEN 1 ELSE 0 END) as printed,
+               SUM(CASE WHEN lrn != '' AND lrn IS NOT NULL THEN 1 ELSE 0 END) as with_lrn
+        FROM students
+        GROUP BY grade, section_name
+        ORDER BY grade, section_name
+    """).fetchall()
+
+    conn.close()
+    return {
+        "total":            total,
+        "with_photo":       with_photo,
+        "missing_photo":    total - with_photo,
+        "complete":         complete,
+        "incomplete":       total - complete,
+        "id_printed":       id_printed,
+        "id_distributed":   id_distributed,
+        "pending_print":    total - id_printed,
+        "grade_stats":      [dict(r) for r in grade_stats],
+        "section_stats":    [dict(r) for r in section_stats],
+    }
+
+
+def get_section_detail(grade, section_name):
+    """Get section info including adviser signature and students."""
+    conn = get_connection()
+
+    # Get section info
+    section = conn.execute(
+        "SELECT * FROM sections WHERE grade=? AND section_name=?",
+        (grade, section_name)
+    ).fetchone()
+
+    # Get students in section with completion status
+    students = conn.execute("""
+        SELECT *,
+          CASE WHEN (lrn != '' AND lrn IS NOT NULL
+               AND emergency_contact_number != '' AND emergency_contact_number IS NOT NULL
+               AND photo_url != '' AND photo_url IS NOT NULL)
+          THEN 1 ELSE 0 END as is_complete
+        FROM students
+        WHERE grade=? AND section_name=?
+        ORDER BY last_name, first_name
+    """, (grade, section_name)).fetchall()
+
+    conn.close()
+    return section, students
+
+
+def auto_create_sections_from_students():
+    """
+    Scan students table and auto-create any sections
+    that don't exist yet in the sections table.
+    """
+    conn = get_connection()
+    # Get unique grade+section combos from students
+    combos = conn.execute("""
+        SELECT DISTINCT grade, section_name, adviser_name
+        FROM students
+        WHERE grade != '' AND grade IS NOT NULL
+        AND section_name != '' AND section_name IS NOT NULL
+    """).fetchall()
+
+    for row in combos:
+        conn.execute("""
+            INSERT OR IGNORE INTO sections (grade, section_name, adviser_name)
+            VALUES (?, ?, ?)
+        """, (row["grade"], row["section_name"], row["adviser_name"] or ""))
+
+    conn.commit()
+    conn.close()

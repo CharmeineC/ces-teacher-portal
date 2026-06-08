@@ -81,7 +81,8 @@ def index():
     students = get_students(grade or None, section or None, search or None)
     sections = get_all_sections()
     grades   = get_all_grades()
-    stats    = get_stats()
+    from database import get_dashboard_stats
+    stats    = get_dashboard_stats()
     return render_template("index.html",
                            students=students,
                            sections=sections,
@@ -239,7 +240,12 @@ def route_bulk_import():
                 students.append(s)
 
         added, skipped, errors = bulk_import_students(students)
+        # Auto-create any new sections found in the CSV
+        from database import auto_create_sections_from_students
+        auto_create_sections_from_students()
         msg = f"Imported {added} students. Skipped {skipped}."
+        if errors:
+            msg += f" Errors: {'; '.join(errors[:3])}"
         return redirect(url_for("index", grade=grade, section=section,
                                 msg=msg, success="1"))
     except Exception as e:
@@ -305,6 +311,24 @@ def api_student(student_id):
 def api_stats():
     return jsonify(get_stats())
 
+
+
+@app.route("/section/<grade>/<section_name>")
+def section_detail(grade, section_name):
+    """Section detail page — shows adviser info, signature, and all students."""
+    from database import get_section_detail, get_dashboard_stats
+    section, students = get_section_detail(grade, section_name)
+    stats = get_dashboard_stats()
+    sections = get_all_sections()
+    grades = get_all_grades()
+    return render_template("section_detail.html",
+                           section=section,
+                           students=students,
+                           school_name=SCHOOL_NAME,
+                           stats=stats,
+                           sections=sections,
+                           grades=grades,
+                           is_admin=is_admin())
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

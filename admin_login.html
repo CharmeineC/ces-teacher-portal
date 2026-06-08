@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Login — {{ school_name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f5f6fa;font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:white;border-radius:16px;padding:36px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,.1);}
+  .logo{text-align:center;margin-bottom:28px;}
+  .school-name{font-size:15px;font-weight:800;color:#1a3c5e;margin-top:8px;}
+  .school-sub{font-size:12px;color:#6b7280;margin-top:3px;}
+  .title{font-size:18px;font-weight:700;color:#1a1d2e;margin-bottom:6px;}
+  .subtitle{font-size:13px;color:#6b7280;margin-bottom:24px;}
+  .form-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block;font-weight:600;}
+  .form-input{width:100%;background:#f5f6fa;border:1px solid #e0e4ef;border-radius:8px;padding:11px 14px;color:#1a1d2e;font-size:14px;outline:none;font-family:'Inter',sans-serif;margin-bottom:14px;}
+  .form-input:focus{border-color:#2563eb;}
+  .btn{width:100%;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;background:#1a3c5e;color:white;font-family:'Inter',sans-serif;transition:all .15s;}
+  .btn:hover{background:#0f2a40;}
+  .error{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:16px;}
+  .back-link{display:block;text-align:center;margin-top:16px;font-size:13px;color:#6b7280;text-decoration:none;}
+  .back-link:hover{color:#1a3c5e;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div style="font-size:36px">🏫</div>
+    <div class="school-name">{{ school_name }}</div>
+    <div class="school-sub">Student Enrollment Portal</div>
+  </div>
+  <div class="title">Admin Login</div>
+  <div class="subtitle">Only the school administrator can mark IDs as printed or distributed.</div>
+
+  {% if error %}
+  <div class="error">❌ {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/admin/login">
+    <label class="form-label">Username</label>
+    <input class="form-input" type="text" name="username" placeholder="Enter username" required autofocus/>
+    <label class="form-label">Password</label>
+    <input class="form-input" type="password" name="password" placeholder="Enter password" required/>
+    <button type="submit" class="btn">Log In</button>
+  </form>
+  <a href="/" class="back-link">← Back to portal</a>
+</div>
+</body>
+</html>

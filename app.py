@@ -294,9 +294,9 @@ def route_upload_photo(student_id):
 @app.route("/bulk_import", methods=["POST"])
 def route_bulk_import():
     """Import students from CSV file."""
-    grade   = request.form.get("grade", "")
-    section = request.form.get("section_name", "")
-    adviser = request.form.get("adviser_name", "")
+    grade   = request.form.get("grade", "").strip()
+    section = request.form.get("section_name", "").strip()
+    adviser = request.form.get("adviser_name", "").strip()
 
     if "file" not in request.files:
         return redirect(url_for("index", msg="No file selected", success="0"))
@@ -305,22 +305,32 @@ def route_bulk_import():
     if not file or not file.filename:
         return redirect(url_for("index", msg="No file selected", success="0"))
 
-    # Parse CSV
+    # Grade and section MUST come from the form — not from CSV
+    if not grade or not section:
+        return redirect(url_for("index",
+            msg="Please select your grade and section before importing.",
+            success="0"))
+
+    # Get adviser info from the section record
+    from database import get_section
+    sec_info = get_section(grade, section)
+    adviser = sec_info["adviser_name"] if sec_info else adviser
+
     try:
-        stream    = io.StringIO(file.stream.read().decode("utf-8-sig"))
-        reader    = csv.DictReader(stream)
-        students  = []
+        stream  = io.StringIO(file.stream.read().decode("utf-8-sig"))
+        reader  = csv.DictReader(stream)
+        students = []
         for row in reader:
-            # Flexible column matching
             s = {
                 "lrn":           str(row.get("lrn") or row.get("LRN") or "").strip(),
                 "first_name":    str(row.get("first_name") or row.get("First Name") or row.get("FIRST NAME") or "").strip(),
                 "last_name":     str(row.get("last_name") or row.get("Last Name") or row.get("LAST NAME") or "").strip(),
                 "middle_initial":str(row.get("middle_initial") or row.get("MI") or row.get("Middle Initial") or "").strip(),
                 "extension":     str(row.get("extension") or row.get("Extension") or row.get("EXT") or "").strip(),
-                "grade":         str(row.get("grade") or row.get("Grade") or grade).strip(),
-                "section_name":  str(row.get("section") or row.get("Section") or row.get("section_name") or section).strip(),
-                "adviser_name":  str(row.get("adviser") or row.get("Adviser") or row.get("adviser_name") or adviser).strip(),
+                # Always use grade/section from form — never from CSV
+                "grade":         grade,
+                "section_name":  section,
+                "adviser_name":  adviser,
                 "emergency_contact_name":    str(row.get("emergency_contact_name") or row.get("Emergency Contact") or "").strip(),
                 "emergency_contact_address": str(row.get("emergency_contact_address") or row.get("Address") or "").strip(),
                 "emergency_contact_number":  str(row.get("emergency_contact_number") or row.get("Contact Number") or "").strip(),
@@ -329,14 +339,14 @@ def route_bulk_import():
                 students.append(s)
 
         added, skipped, errors = bulk_import_students(students)
-        # Auto-create any new sections found in the CSV
-        from database import auto_create_sections_from_students
-        auto_create_sections_from_students()
-        msg = f"Imported {added} students. Skipped {skipped}."
+        msg = f"Imported {added} students to {grade} - {section}. Skipped {skipped}."
         if errors:
             msg += f" Errors: {'; '.join(errors[:3])}"
-        return redirect(url_for("index", grade=grade, section=section,
-                                msg=msg, success="1"))
+        return redirect(url_for("section_detail",
+                                grade=grade,
+                                section_name=section,
+                                msg=msg,
+                                success="1"))
     except Exception as e:
         return redirect(url_for("index", msg=f"Import error: {str(e)}", success="0"))
 
@@ -545,15 +555,17 @@ def download_photos_zip(grade, section_name):
 
 @app.route("/download_template_csv")
 def download_template_csv():
-    """Download the CSV template for teachers."""
+    """Download the simplified CSV template for teachers.
+    No grade/section needed — those come from the form."""
     template = (
         "lrn,last_name,first_name,middle_initial,extension,"
-        "grade,section_name,adviser_name,"
         "emergency_contact_name,emergency_contact_address,emergency_contact_number\n"
-        "123456789001,dela Cruz,Juan,A,,Grade 1,Sampaguita,Maria Santos,"
+        "123456789001,dela Cruz,Juan,A,,"
         "Rosa dela Cruz,123 Rizal St Davao City,09284553934\n"
-        "123456789002,Reyes,Maria,B,,Grade 1,Sampaguita,Maria Santos,"
+        "123456789002,Reyes,Maria,B,,"
         "Pedro Reyes,456 Mabini St Davao City,09171234567\n"
+        "123456789003,Santos,Jose,C,Jr.,"
+        "Ana Santos,789 Bonifacio St Davao City,09281234567\n"
     )
     from flask import Response
     return Response(

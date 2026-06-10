@@ -35,6 +35,10 @@ def is_configured():
 
 def get_or_create_folder(service, folder_name, parent_id=None):
     """Get a folder by name or create it if it doesn't exist."""
+    # Clean parent_id — extract just the ID if full URL was passed
+    if parent_id and "drive.google.com" in parent_id:
+        parent_id = parent_id.rstrip("/").split("/")[-1]
+
     query = (
         f"name='{folder_name}' and "
         f"mimeType='application/vnd.google-apps.folder' and "
@@ -91,8 +95,12 @@ def upload_photo(file_content, filename, grade, section_name, mime_type="image/j
     try:
         from googleapiclient.http import MediaIoBaseUpload
 
-        # Root folder ID from env var
-        root_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID")
+        # Root folder ID from env var — clean if full URL was pasted
+        root_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
+        if root_id and "drive.google.com" in root_id:
+            root_id = root_id.rstrip("/").split("/")[-1]
+        if not root_id:
+            root_id = None
 
         # Clean names for folder
         grade_clean   = (grade or "Unknown").replace(" ", "").replace("/", "-")

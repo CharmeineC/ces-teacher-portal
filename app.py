@@ -142,7 +142,9 @@ def route_add_section():
                 except Exception as e:
                     print(f"CSV import error: {e}")
 
-    return redirect(url_for("section_detail", grade=grade, section_name=section_name))
+    if grade and section_name:
+        return redirect(url_for("section_detail", grade=grade, section_name=section_name))
+    return redirect(url_for("index", msg="Section added successfully!", success="1"))
 
 
 @app.route("/add_student", methods=["POST"])
@@ -347,7 +349,9 @@ def api_stats():
 @app.route("/section/<grade>/<section_name>")
 def section_detail(grade, section_name):
     """Section detail page — shows adviser info, signature, and all students."""
-    from database import get_section_detail, get_dashboard_stats
+    from database import get_section_detail, get_dashboard_stats, auto_create_sections_from_students
+    # Auto-create section if it came from CSV but not manually added
+    auto_create_sections_from_students()
     section, students = get_section_detail(grade, section_name)
     stats = get_dashboard_stats()
     sections = get_all_sections()
@@ -359,50 +363,68 @@ def section_detail(grade, section_name):
                            stats=stats,
                            sections=sections,
                            grades=grades,
+                           selected_grade=grade,
+                           selected_section=section_name,
                            is_admin=is_admin())
 
 
 @app.route("/download_photo/<int:student_id>")
 def download_photo(student_id):
     """Download a single student photo with proper filename."""
-    import requests as req
-    student = get_student_by_id(student_id)
-    if not student or not student["photo_url"]:
-        return "No photo found", 404
-
-    # Build clean filename
-    last  = (student["last_name"] or "").upper().replace(" ", "")
-    first = (student["first_name"] or "").upper().replace(" ", "")
-    grade = (student["grade"] or "").upper().replace(" ", "")
-    sec   = (student["section_name"] or "").upper().replace(" ", "")
-    ext   = student["photo_url"].split(".")[-1].lower()
-    if ext not in ["jpg","jpeg","png","gif","webp"]:
-        ext = "jpg"
-    filename = f"{last}_{first}_{grade}_{sec}.{ext}"
-
-    photo_url = student["photo_url"]
-
-    # If it's a local file
-    if photo_url.startswith("/static/"):
-        filepath = os.path.join(os.getcwd(), photo_url.lstrip("/"))
-        if os.path.exists(filepath):
-            from flask import send_file
-            return send_file(filepath, as_attachment=True, download_name=filename)
-
-    # If it's a remote URL (Cloudinary etc.)
     try:
-        resp = req.get(photo_url, timeout=10)
+        student = get_student_by_id(student_id)
+        if not student or not student["photo_url"]:
+            return "No photo found for this student", 404
+
+        # Build clean filename
+        last  = (student["last_name"]    or "UNKNOWN").upper().replace(" ", "")
+        first = (student["first_name"]   or "UNKNOWN").upper().replace(" ", "")
+        grade = (student["grade"]        or "").upper().replace(" ", "").replace("-","")
+        sec   = (student["section_name"] or "").upper().replace(" ", "")
+        
+        photo_url = student["photo_url"]
+        
+        # Get file extension
+        url_path = photo_url.split("?")[0]  # remove query params
+        ext = url_path.split(".")[-1].lower() if "." in url_path else "jpg"
+        if ext not in ["jpg","jpeg","png","gif","webp"]:
+            ext = "jpg"
+        
+        filename = f"{last}_{first}_{grade}_{sec}.{ext}"
+
+        # Local file (saved in static/uploads)
+        if photo_url.startswith("/static/"):
+            # Try multiple base paths
+            for base in [os.getcwd(), "/app", os.path.dirname(__file__)]:
+                filepath = os.path.join(base, photo_url.lstrip("/"))
+                if os.path.exists(filepath):
+                    from flask import send_file
+                    return send_file(
+                        filepath,
+                        as_attachment=True,
+                        download_name=filename
+                    )
+            return "Photo file not found on server", 404
+
+        # Remote URL (Cloudinary, etc.)
+        import requests as rq
+        resp = rq.get(photo_url, timeout=15)
         if resp.status_code == 200:
             from flask import Response
+            ctype = resp.headers.get("content-type", "image/jpeg")
             return Response(
                 resp.content,
-                mimetype=resp.headers.get("content-type", "image/jpeg"),
-                headers={"Content-Disposition": f"attachment; filename={filename}"}
+                mimetype=ctype,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"',
+                    "Content-Length": str(len(resp.content))
+                }
             )
-    except Exception as e:
-        return f"Error downloading photo: {e}", 500
+        return f"Could not fetch photo (status {resp.status_code})", 404
 
-    return "Photo not found", 404
+    except Exception as e:
+        print(f"Download photo error: {e}")
+        return f"Error: {str(e)}", 500
 
 
 @app.route("/download_photos_zip/<grade>/<section_name>")
@@ -433,11 +455,17 @@ def download_photos_zip(grade, section_name):
             photo_url = student["photo_url"]
             try:
                 if photo_url.startswith("/static/"):
-                    filepath = os.path.join(os.getcwd(), photo_url.lstrip("/"))
-                    if os.path.exists(filepath):
-                        with open(filepath, "rb") as f:
-                            zf.writestr(filename, f.read())
-                            count += 1
+                    found = False
+                    for base in [os.getcwd(), "/app", os.path.dirname(__file__)]:
+                        filepath = os.path.join(base, photo_url.lstrip("/"))
+                        if os.path.exists(filepath):
+                            with open(filepath, "rb") as f:
+                                zf.writestr(filename, f.read())
+                                count += 1
+                                found = True
+                                break
+                    if not found:
+                        continue
                 else:
                     resp = req.get(photo_url, timeout=10)
                     if resp.status_code == 200:

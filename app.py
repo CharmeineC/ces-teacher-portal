@@ -43,27 +43,54 @@ def allowed_image(filename):
            filename.rsplit(".", 1)[1].lower() in {"jpg", "jpeg", "png", "gif", "webp"}
 
 
-def upload_photo(file):
-    """Save photo and return URL. Uses Cloudinary if configured, else local."""
-    cloudinary_url = os.environ.get("CLOUDINARY_URL")
-    if cloudinary_url:
+def upload_photo(file, grade="", section_name="", student_name=""):
+    """
+    Save photo and return URL.
+    Priority: Google Drive → local storage fallback
+    """
+    if not file or not file.filename:
+        return ""
+
+    import time
+    from google_drive import is_configured, upload_photo as gd_upload
+
+    # Build clean filename
+    if student_name:
+        clean_name = student_name.upper().replace(" ", "_").replace(",", "")
+    else:
+        clean_name = str(int(time.time()))
+
+    ext = secure_filename(file.filename).rsplit(".", 1)[-1].lower()
+    if ext not in ["jpg","jpeg","png","gif","webp"]:
+        ext = "jpg"
+    filename = f"{clean_name}.{ext}"
+
+    # Try Google Drive first
+    if is_configured():
         try:
-            import cloudinary
-            import cloudinary.uploader
-            result = cloudinary.uploader.upload(file, folder="teacher_portal")
-            return result.get("secure_url", "")
+            file_content = file.read()
+            mime_type = file.content_type or "image/jpeg"
+            url = gd_upload(file_content, filename, grade, section_name, mime_type)
+            if url:
+                return url
+            # Reset file pointer if Google Drive failed
+            file.stream.seek(0)
         except Exception as e:
-            print(f"Cloudinary error: {e}")
+            print(f"Google Drive upload failed: {e}")
+            try:
+                file.stream.seek(0)
+            except Exception:
+                pass
 
     # Local storage fallback
-    if file and file.filename:
-        filename = secure_filename(file.filename)
-        import time
-        filename = f"{int(time.time())}_{filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        filename_local = f"{int(time.time())}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, filename_local)
         file.save(filepath)
-        return f"/static/uploads/{filename}"
-    return ""
+        return f"/static/uploads/{filename_local}"
+    except Exception as e:
+        print(f"Local upload failed: {e}")
+        return ""
 
 
 def is_admin():
@@ -170,7 +197,13 @@ def route_add_student():
     if "photo" in request.files:
         photo_file = request.files["photo"]
         if photo_file and photo_file.filename and allowed_image(photo_file.filename):
-            data["photo_url"] = upload_photo(photo_file)
+            student_name = f"{data.get('last_name','')}_{data.get('first_name','')}"
+            data["photo_url"] = upload_photo(
+                photo_file,
+                grade=data.get("grade",""),
+                section_name=data.get("section_name",""),
+                student_name=student_name
+            )
 
     success, msg = add_student(data)
     return redirect(url_for("index", grade=grade, section=section,
@@ -203,7 +236,13 @@ def route_edit_student(student_id):
     if success and "photo" in request.files:
         photo_file = request.files["photo"]
         if photo_file and photo_file.filename and allowed_image(photo_file.filename):
-            photo_url = upload_photo(photo_file)
+            student_name = f"{data.get('last_name','')}_{data.get('first_name','')}"
+            photo_url = upload_photo(
+                photo_file,
+                grade=data.get("grade",""),
+                section_name=data.get("section_name",""),
+                student_name=student_name
+            )
             update_student_photo(student_id, photo_url)
 
     return redirect(url_for("index",
@@ -230,7 +269,14 @@ def route_upload_photo(student_id):
     if not allowed_image(photo_file.filename):
         return jsonify({"success": False, "message": "Invalid file type"})
 
-    photo_url = upload_photo(photo_file)
+    student = get_student_by_id(student_id)
+    student_name = f"{student['last_name']}_{student['first_name']}" if student else ""
+    photo_url = upload_photo(
+        photo_file,
+        grade=student["grade"] if student else "",
+        section_name=student["section_name"] if student else "",
+        student_name=student_name
+    )
     update_student_photo(student_id, photo_url)
     return jsonify({"success": True, "photo_url": photo_url})
 
@@ -505,6 +551,14 @@ def download_template_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=CES_Student_Template.csv"}
     )
+
+
+@app.route("/api/test_drive")
+def api_test_drive():
+    """Test Google Drive connection."""
+    from google_drive import test_connection
+    success, message = test_connection()
+    return jsonify({"success": success, "message": message})
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

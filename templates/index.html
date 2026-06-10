@@ -392,6 +392,11 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
 
+function updateImportGrade(sel){
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('import-grade').value = opt.dataset.grade || '';
+}
+
 function previewSig(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();

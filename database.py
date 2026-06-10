@@ -62,13 +62,34 @@ def setup_database():
 # ── SECTIONS ──────────────────────────────────────────────────────────────────
 
 def add_section(grade, section_name, adviser_name="", adviser_signature=""):
+    """
+    Add or update a section.
+    If section already exists, updates adviser name and signature.
+    If new signature is empty, keeps the existing one.
+    """
     conn = get_connection()
     try:
-        conn.execute("""
-            INSERT OR IGNORE INTO sections
-                (grade, section_name, adviser_name, adviser_signature)
-            VALUES (?, ?, ?, ?)
-        """, (grade, section_name, adviser_name, adviser_signature))
+        # Check if section already exists
+        existing = conn.execute(
+            "SELECT id, adviser_signature FROM sections WHERE grade=? AND section_name=?",
+            (grade, section_name)
+        ).fetchone()
+
+        if existing:
+            # Update — keep existing signature if no new one provided
+            keep_sig = existing["adviser_signature"] if not adviser_signature else adviser_signature
+            conn.execute("""
+                UPDATE sections
+                SET adviser_name=?, adviser_signature=?
+                WHERE grade=? AND section_name=?
+            """, (adviser_name, keep_sig, grade, section_name))
+        else:
+            # Insert new
+            conn.execute("""
+                INSERT INTO sections (grade, section_name, adviser_name, adviser_signature)
+                VALUES (?, ?, ?, ?)
+            """, (grade, section_name, adviser_name, adviser_signature))
+
         conn.commit()
         return True
     except Exception as e:

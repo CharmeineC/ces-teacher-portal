@@ -103,13 +103,15 @@ def is_admin():
 @app.route("/")
 def index():
     """Main teacher portal page."""
+    from database import get_dashboard_stats, auto_create_sections_from_students
+    # Auto-create sections from any imported students
+    auto_create_sections_from_students()
     grade   = request.args.get("grade", "")
     section = request.args.get("section", "")
     search  = request.args.get("search", "")
     students = get_students(grade or None, section or None, search or None)
     sections = get_all_sections()
     grades   = get_all_grades()
-    from database import get_dashboard_stats
     stats    = get_dashboard_stats()
     return render_template("index.html",
                            students=students,
@@ -176,8 +178,10 @@ def route_add_section():
                     print(f"CSV import error: {e}")
 
     if grade and section_name:
-        return redirect(url_for("section_detail", grade=grade, section_name=section_name))
-    return redirect(url_for("index", msg="Section added successfully!", success="1"))
+        return redirect(url_for("index",
+                                msg=f"Class {grade} - {section_name} saved successfully!",
+                                success="1"))
+    return redirect(url_for("index", msg="Section saved!", success="1"))
 
 
 @app.route("/add_student", methods=["POST"])

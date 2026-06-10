@@ -121,6 +121,13 @@ def upload_photo(file_content, filename, grade, section_name, mime_type="image/j
             except Exception:
                 pass
 
+        # Validate file content
+        if not file_content:
+            print("Google Drive: file_content is empty!")
+            return None
+
+        print(f"Google Drive: uploading {filename} ({len(file_content)} bytes) to folder {section_folder_id}")
+
         # Upload new file
         file_metadata = {
             "name": filename,
@@ -129,7 +136,7 @@ def upload_photo(file_content, filename, grade, section_name, mime_type="image/j
         media = MediaIoBaseUpload(
             io.BytesIO(file_content),
             mimetype=mime_type,
-            resumable=False
+            resumable=True
         )
         uploaded = service.files().create(
             body=file_metadata,
@@ -138,14 +145,23 @@ def upload_photo(file_content, filename, grade, section_name, mime_type="image/j
         ).execute()
         file_id = uploaded.get("id")
 
+        if not file_id:
+            print("Google Drive: upload returned no file ID!")
+            return None
+
+        print(f"Google Drive: uploaded successfully, file_id={file_id}")
+
         # Make file public
         _make_public(service, file_id)
 
-        # Return direct view URL
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
+        url = f"https://drive.google.com/uc?export=view&id={file_id}"
+        print(f"Google Drive: public URL = {url}")
+        return url
 
     except Exception as e:
         print(f"Google Drive upload error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

@@ -111,7 +111,38 @@ def route_add_section():
     if grade and section_name:
         add_section(grade, section_name, adviser_name, sig_url)
 
-    return redirect(url_for("index", grade=grade, section=section_name))
+        # Handle optional CSV upload
+        if "csv_file" in request.files:
+            csv_file = request.files["csv_file"]
+            if csv_file and csv_file.filename and csv_file.filename.endswith(".csv"):
+                try:
+                    import io, csv as csv_mod
+                    stream  = io.StringIO(csv_file.stream.read().decode("utf-8-sig"))
+                    reader  = csv_mod.DictReader(stream)
+                    students = []
+                    for row in reader:
+                        s = {
+                            "lrn":           str(row.get("lrn") or row.get("LRN") or "").strip(),
+                            "first_name":    str(row.get("first_name") or row.get("First Name") or "").strip(),
+                            "last_name":     str(row.get("last_name") or row.get("Last Name") or "").strip(),
+                            "middle_initial":str(row.get("middle_initial") or row.get("MI") or "").strip(),
+                            "extension":     str(row.get("extension") or row.get("Extension") or "").strip(),
+                            "grade":         str(row.get("grade") or row.get("Grade") or grade).strip(),
+                            "section_name":  str(row.get("section_name") or row.get("Section") or section_name).strip(),
+                            "adviser_name":  str(row.get("adviser_name") or row.get("Adviser") or adviser_name).strip(),
+                            "emergency_contact_name":    str(row.get("emergency_contact_name") or "").strip(),
+                            "emergency_contact_address": str(row.get("emergency_contact_address") or "").strip(),
+                            "emergency_contact_number":  str(row.get("emergency_contact_number") or "").strip(),
+                        }
+                        if s["first_name"] or s["last_name"]:
+                            students.append(s)
+                    added, skipped, errors = bulk_import_students(students)
+                    from database import auto_create_sections_from_students
+                    auto_create_sections_from_students()
+                except Exception as e:
+                    print(f"CSV import error: {e}")
+
+    return redirect(url_for("section_detail", grade=grade, section_name=section_name))
 
 
 @app.route("/add_student", methods=["POST"])
@@ -329,6 +360,123 @@ def section_detail(grade, section_name):
                            sections=sections,
                            grades=grades,
                            is_admin=is_admin())
+
+
+@app.route("/download_photo/<int:student_id>")
+def download_photo(student_id):
+    """Download a single student photo with proper filename."""
+    import requests as req
+    student = get_student_by_id(student_id)
+    if not student or not student["photo_url"]:
+        return "No photo found", 404
+
+    # Build clean filename
+    last  = (student["last_name"] or "").upper().replace(" ", "")
+    first = (student["first_name"] or "").upper().replace(" ", "")
+    grade = (student["grade"] or "").upper().replace(" ", "")
+    sec   = (student["section_name"] or "").upper().replace(" ", "")
+    ext   = student["photo_url"].split(".")[-1].lower()
+    if ext not in ["jpg","jpeg","png","gif","webp"]:
+        ext = "jpg"
+    filename = f"{last}_{first}_{grade}_{sec}.{ext}"
+
+    photo_url = student["photo_url"]
+
+    # If it's a local file
+    if photo_url.startswith("/static/"):
+        filepath = os.path.join(os.getcwd(), photo_url.lstrip("/"))
+        if os.path.exists(filepath):
+            from flask import send_file
+            return send_file(filepath, as_attachment=True, download_name=filename)
+
+    # If it's a remote URL (Cloudinary etc.)
+    try:
+        resp = req.get(photo_url, timeout=10)
+        if resp.status_code == 200:
+            from flask import Response
+            return Response(
+                resp.content,
+                mimetype=resp.headers.get("content-type", "image/jpeg"),
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+    except Exception as e:
+        return f"Error downloading photo: {e}", 500
+
+    return "Photo not found", 404
+
+
+@app.route("/download_photos_zip/<grade>/<section_name>")
+def download_photos_zip(grade, section_name):
+    """Download all photos for a section as a ZIP file."""
+    import zipfile, io, requests as req
+    from database import get_section_detail
+
+    _, students = get_section_detail(grade, section_name)
+
+    zip_buffer = io.BytesIO()
+    count = 0
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for student in students:
+            if not student["photo_url"]:
+                continue
+
+            last  = (student["last_name"] or "").upper().replace(" ", "")
+            first = (student["first_name"] or "").upper().replace(" ", "")
+            g     = (student["grade"] or "").upper().replace(" ", "")
+            sec   = (student["section_name"] or "").upper().replace(" ", "")
+            ext   = student["photo_url"].split(".")[-1].lower()
+            if ext not in ["jpg","jpeg","png","gif","webp"]:
+                ext = "jpg"
+            filename = f"{last}_{first}_{g}_{sec}.{ext}"
+
+            photo_url = student["photo_url"]
+            try:
+                if photo_url.startswith("/static/"):
+                    filepath = os.path.join(os.getcwd(), photo_url.lstrip("/"))
+                    if os.path.exists(filepath):
+                        with open(filepath, "rb") as f:
+                            zf.writestr(filename, f.read())
+                            count += 1
+                else:
+                    resp = req.get(photo_url, timeout=10)
+                    if resp.status_code == 200:
+                        zf.writestr(filename, resp.content)
+                        count += 1
+            except Exception:
+                continue
+
+    if count == 0:
+        return "No photos found for this section", 404
+
+    zip_buffer.seek(0)
+    zip_name = f"photos_{grade}_{section_name}.zip".replace(" ", "_")
+    from flask import Response
+    return Response(
+        zip_buffer.getvalue(),
+        mimetype="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={zip_name}"}
+    )
+
+
+@app.route("/download_template_csv")
+def download_template_csv():
+    """Download the CSV template for teachers."""
+    template = (
+        "lrn,last_name,first_name,middle_initial,extension,"
+        "grade,section_name,adviser_name,"
+        "emergency_contact_name,emergency_contact_address,emergency_contact_number\n"
+        "123456789001,dela Cruz,Juan,A,,Grade 1,Sampaguita,Maria Santos,"
+        "Rosa dela Cruz,123 Rizal St Davao City,09284553934\n"
+        "123456789002,Reyes,Maria,B,,Grade 1,Sampaguita,Maria Santos,"
+        "Pedro Reyes,456 Mabini St Davao City,09171234567\n"
+    )
+    from flask import Response
+    return Response(
+        template,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=CES_Student_Template.csv"}
+    )
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

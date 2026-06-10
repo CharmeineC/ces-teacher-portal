@@ -392,13 +392,19 @@ def get_section_detail(grade, section_name):
     """Get section info including adviser signature and students."""
     conn = get_connection()
 
-    # Get section info
+    # Get section info — try exact match first, then case-insensitive
     section = conn.execute(
         "SELECT * FROM sections WHERE grade=? AND section_name=?",
         (grade, section_name)
     ).fetchone()
 
-    # Get students in section with completion status
+    if not section:
+        section = conn.execute(
+            "SELECT * FROM sections WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)",
+            (grade, section_name)
+        ).fetchone()
+
+    # Get students — match on section name, flexible grade matching
     students = conn.execute("""
         SELECT *,
           CASE WHEN (lrn != '' AND lrn IS NOT NULL
@@ -406,9 +412,10 @@ def get_section_detail(grade, section_name):
                AND photo_url != '' AND photo_url IS NOT NULL)
           THEN 1 ELSE 0 END as is_complete
         FROM students
-        WHERE grade=? AND section_name=?
+        WHERE LOWER(section_name)=LOWER(?)
+        AND (LOWER(grade)=LOWER(?) OR grade=? OR ? IS NULL)
         ORDER BY last_name, first_name
-    """, (grade, section_name)).fetchall()
+    """, (section_name, grade, grade, grade)).fetchall()
 
     conn.close()
     return section, students

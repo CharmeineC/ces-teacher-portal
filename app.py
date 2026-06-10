@@ -60,7 +60,8 @@ def upload_photo(file, grade="", section_name="", student_name=""):
     else:
         clean_name = str(int(time.time()))
 
-    ext = secure_filename(file.filename).rsplit(".", 1)[-1].lower()
+    safe_name = secure_filename(file.filename)
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else "jpg"
     if ext not in ["jpg","jpeg","png","gif","webp"]:
         ext = "jpg"
     filename = f"{clean_name}.{ext}"
@@ -133,7 +134,12 @@ def route_add_section():
     if "signature" in request.files:
         sig_file = request.files["signature"]
         if sig_file and sig_file.filename and allowed_image(sig_file.filename):
-            sig_url = upload_photo(sig_file)
+            sig_url = upload_photo(
+                sig_file,
+                grade=grade,
+                section_name=section_name,
+                student_name=f"SIGNATURE_{adviser_name.replace(' ','_')}"
+            )
 
     if grade and section_name:
         add_section(grade, section_name, adviser_name, sig_url)

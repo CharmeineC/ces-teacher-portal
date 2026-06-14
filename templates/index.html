@@ -353,18 +353,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
           </td>
           <td style="text-align:center;font-size:16px">{{ '✅' if sec.adviser_signature else '⚠️' }}</td>
           <td>
-            <div style="display:flex;gap:5px;align-items:center">
-              <a href="/section/{{ sec.grade }}/{{ sec.section_name }}" class="btn btn-outline btn-sm">View →</a>
-              {% if is_admin %}
-              <form method="POST" action="/delete_section/{{ sec.grade }}/{{ sec.section_name }}"
-                    onsubmit="return confirm('Delete {{ sec.grade }} - {{ sec.section_name }} and ALL its students? This cannot be undone.')">
-                <button type="submit" class="btn btn-sm btn-red">🗑</button>
-              </form>
-              {% else %}
-              <button type="button" class="btn btn-sm btn-red"
-                onclick="openPinModal('section','{{ sec.grade }}','{{ sec.section_name }}','')">🗑</button>
-              {% endif %}
-            </div>
+            <a href="/section/{{ sec.grade }}/{{ sec.section_name }}" class="btn btn-outline btn-sm">View →</a>
           </td>
         </tr>
         {% endif %}

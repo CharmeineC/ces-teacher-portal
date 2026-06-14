@@ -27,10 +27,16 @@ def setup_database():
             section_name TEXT NOT NULL,
             adviser_name TEXT,
             adviser_signature TEXT,
+            section_pin  TEXT DEFAULT '',
             created_at   TEXT DEFAULT (datetime('now','localtime')),
             UNIQUE(grade, section_name)
         )
     """)
+    # Add section_pin column to existing databases
+    try:
+        cursor.execute("ALTER TABLE sections ADD COLUMN section_pin TEXT DEFAULT ''")
+    except Exception:
+        pass
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS students (
@@ -70,34 +76,33 @@ def setup_database():
 
 # ── SECTIONS ──────────────────────────────────────────────────────────────────
 
-def add_section(grade, section_name, adviser_name="", adviser_signature=""):
+def add_section(grade, section_name, adviser_name="", adviser_signature="", section_pin=""):
     """
     Add or update a section.
     If section already exists, updates adviser name and signature.
-    If new signature is empty, keeps the existing one.
+    PIN is only set on creation or explicitly updated.
     """
     conn = get_connection()
     try:
-        # Check if section already exists
         existing = conn.execute(
-            "SELECT id, adviser_signature FROM sections WHERE grade=? AND section_name=?",
+            "SELECT id, adviser_signature, section_pin FROM sections WHERE grade=? AND section_name=?",
             (grade, section_name)
         ).fetchone()
 
         if existing:
-            # Update — keep existing signature if no new one provided
             keep_sig = existing["adviser_signature"] if not adviser_signature else adviser_signature
+            # Only update PIN if a new one was provided
+            keep_pin = existing["section_pin"] if not section_pin else section_pin
             conn.execute("""
                 UPDATE sections
-                SET adviser_name=?, adviser_signature=?
+                SET adviser_name=?, adviser_signature=?, section_pin=?
                 WHERE grade=? AND section_name=?
-            """, (adviser_name, keep_sig, grade, section_name))
+            """, (adviser_name, keep_sig, keep_pin, grade, section_name))
         else:
-            # Insert new
             conn.execute("""
-                INSERT INTO sections (grade, section_name, adviser_name, adviser_signature)
-                VALUES (?, ?, ?, ?)
-            """, (grade, section_name, adviser_name, adviser_signature))
+                INSERT INTO sections (grade, section_name, adviser_name, adviser_signature, section_pin)
+                VALUES (?, ?, ?, ?, ?)
+            """, (grade, section_name, adviser_name, adviser_signature, section_pin))
 
         conn.commit()
         return True
@@ -584,5 +589,65 @@ def delete_student(student_id):
     except Exception as e:
         print(f"Error deleting student: {e}")
         return False
+    finally:
+        conn.close()
+
+
+def get_students_filtered(filter_type=None, grade=None, section_name=None):
+    """Get students by filter type for dashboard stat cards."""
+    conn = get_connection()
+    query = "SELECT * FROM students WHERE 1=1"
+    params = []
+
+    if filter_type == "missing_photo":
+        query += " AND (photo_url IS NULL OR photo_url = '')"
+    elif filter_type == "with_photo":
+        query += " AND photo_url IS NOT NULL AND photo_url != ''"
+    elif filter_type == "id_printed":
+        query += " AND id_printed = 1"
+    elif filter_type == "id_distributed":
+        query += " AND id_distributed = 1"
+    elif filter_type == "incomplete":
+        query += """ AND (
+            lrn IS NULL OR lrn = '' OR
+            emergency_contact_number IS NULL OR emergency_contact_number = '' OR
+            photo_url IS NULL OR photo_url = ''
+        )"""
+    elif filter_type == "complete":
+        query += """ AND lrn != '' AND lrn IS NOT NULL
+            AND emergency_contact_number != '' AND emergency_contact_number IS NOT NULL
+            AND photo_url != '' AND photo_url IS NOT NULL"""
+
+    if grade:
+        query += " AND grade = ?"
+        params.append(grade)
+    if section_name:
+        query += " AND section_name = ?"
+        params.append(section_name)
+
+    query += " ORDER BY grade, section_name, last_name, first_name"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return rows
+
+
+def verify_section_pin(grade, section_name, pin_input):
+    """Verify the PIN for a section. Returns (valid, message)."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT section_pin FROM sections WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)",
+            (grade, section_name)
+        ).fetchone()
+        if not row:
+            return False, "Section not found"
+        stored_pin = row["section_pin"] or ""
+        if not stored_pin:
+            return False, "This section has no PIN set. Only admin can delete."
+        if str(pin_input).strip() == str(stored_pin).strip():
+            return True, "PIN correct"
+        return False, "Incorrect PIN"
+    except Exception as e:
+        return False, str(e)
     finally:
         conn.close()

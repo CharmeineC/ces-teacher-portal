@@ -198,9 +198,12 @@ def route_add_section():
                     print(f"CSV headers found: {headers}")
                     students = []
                     for row in reader:
-                        # Flexible column matching (case-insensitive)
-                        row_lower = {k.lower().strip(): v for k, v in row.items() if k}
-                        raw_lrn = str(row_lower.get("lrn") or "").strip()
+                        # Normalize keys: lowercase + replace spaces with underscores
+                        row_norm = {
+                            k.lower().strip().replace(" ", "_"): v
+                            for k, v in row.items() if k
+                        }
+                        raw_lrn = str(row_norm.get("lrn") or "").strip()
                         # Clean scientific notation
                         try:
                             if raw_lrn and ('e' in raw_lrn.lower() or '.' in raw_lrn):
@@ -209,21 +212,30 @@ def route_add_section():
                             pass
                         s = {
                             "lrn":           raw_lrn,
-                            "first_name":    str(row_lower.get("first_name") or row_lower.get("firstname") or "").strip(),
-                            "last_name":     str(row_lower.get("last_name") or row_lower.get("lastname") or "").strip(),
-                            "middle_initial":str(row_lower.get("middle_initial") or row_lower.get("mi") or "").strip(),
-                            "extension":     str(row_lower.get("extension") or row_lower.get("ext") or "").strip(),
+                            "first_name":    str(row_norm.get("first_name") or row_norm.get("firstname") or "").strip(),
+                            "last_name":     str(row_norm.get("last_name") or row_norm.get("lastname") or "").strip(),
+                            "middle_initial":str(row_norm.get("middle_initial") or row_norm.get("mi") or "").strip(),
+                            "extension":     str(row_norm.get("extension") or row_norm.get("ext") or "").strip(),
                             "grade":         grade,
                             "section_name":  section_name,
                             "adviser_name":  adviser_name,
-                            "emergency_contact_name":    str(row_lower.get("emergency_contact_name") or "").strip(),
-                            "emergency_contact_address": str(row_lower.get("emergency_contact_address") or "").strip(),
-                            "emergency_contact_number":  str(row_lower.get("emergency_contact_number") or "").strip(),
+                            "emergency_contact_name":    str(row_norm.get("emergency_contact_name") or "").strip(),
+                            "emergency_contact_address": str(row_norm.get("emergency_contact_address") or "").strip(),
+                            "emergency_contact_number":  str(row_norm.get("emergency_contact_number") or "").strip(),
                         }
                         if s["first_name"] or s["last_name"]:
                             students.append(s)
                     print(f"Students parsed from CSV: {len(students)}")
-                    if students:
+
+                    # Detect duplicate LRN (scientific notation problem)
+                    lrns = [s["lrn"] for s in students if s["lrn"]]
+                    if lrns and len(set(lrns)) == 1 and len(lrns) > 1:
+                        csv_msg = (
+                            f" ⚠️ All {len(lrns)} students have the same LRN ({lrns[0]})! "
+                            "Fix: In Google Sheets, click column A → Format → Number → Plain text "
+                            "→ delete and re-enter LRN numbers → re-download CSV."
+                        )
+                    elif students:
                         csv_added, csv_updated, csv_errors = bulk_import_students(students)
                         csv_msg = f" {csv_added} students added, {csv_updated} updated."
                         if csv_errors:
@@ -407,9 +419,9 @@ def route_bulk_import():
                 "grade":         grade,
                 "section_name":  section,
                 "adviser_name":  adviser,
-                "emergency_contact_name":    str(row.get("emergency_contact_name") or row.get("Emergency Contact") or "").strip(),
-                "emergency_contact_address": str(row.get("emergency_contact_address") or row.get("Address") or "").strip(),
-                "emergency_contact_number":  str(row.get("emergency_contact_number") or row.get("Contact Number") or "").strip(),
+                "emergency_contact_name":    str(row_lower.get("emergency_contact_name") or row_lower.get("emergency_contact") or "").strip(),
+                "emergency_contact_address": str(row_lower.get("emergency_contact_address") or row_lower.get("address") or "").strip(),
+                "emergency_contact_number":  str(row_lower.get("emergency_contact_number") or row_lower.get("contact_number") or "").strip(),
             }
             if s["first_name"] or s["last_name"]:
                 students.append(s)

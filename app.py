@@ -327,13 +327,29 @@ def route_bulk_import():
     sec_info = get_section(grade, section)
     adviser = sec_info["adviser_name"] if sec_info else adviser
 
+    def clean_lrn(val):
+        """Convert LRN to clean string — handles scientific notation from Excel."""
+        if not val:
+            return ""
+        val = str(val).strip()
+        # Handle scientific notation e.g. 1.23457E+11
+        try:
+            if 'e' in val.lower() and ('+' in val or '-' in val.split('e')[-1]):
+                val = str(int(float(val)))
+            elif '.' in val and val.replace('.','').replace('-','').isdigit():
+                val = str(int(float(val)))
+        except Exception:
+            pass
+        return val.strip()
+
     try:
         stream  = io.StringIO(file.stream.read().decode("utf-8-sig"))
         reader  = csv.DictReader(stream)
         students = []
         for row in reader:
+            raw_lrn = str(row.get("lrn") or row.get("LRN") or "").strip()
             s = {
-                "lrn":           str(row.get("lrn") or row.get("LRN") or "").strip(),
+                "lrn":           clean_lrn(raw_lrn),
                 "first_name":    str(row.get("first_name") or row.get("First Name") or row.get("FIRST NAME") or "").strip(),
                 "last_name":     str(row.get("last_name") or row.get("Last Name") or row.get("LAST NAME") or "").strip(),
                 "middle_initial":str(row.get("middle_initial") or row.get("MI") or row.get("Middle Initial") or "").strip(),
@@ -566,16 +582,21 @@ def download_photos_zip(grade, section_name):
 
 @app.route("/download_template_csv")
 def download_template_csv():
-    """Download the simplified CSV template for teachers.
-    No grade/section needed — those come from the form."""
+    """
+    Download CSV template with LRN formatted as text.
+    Uses tab-separated or quoted values to prevent Excel
+    from converting LRN to scientific notation.
+    """
+    # Use quoted LRN values to keep them as text in Excel
     template = (
         "lrn,last_name,first_name,middle_initial,extension,"
         "emergency_contact_name,emergency_contact_address,emergency_contact_number\n"
-        "123456789001,dela Cruz,Juan,A,,"
+        # LRN is quoted to force Excel to treat it as text
+        "\"123456789001\",dela Cruz,Juan,A,,"
         "Rosa dela Cruz,123 Rizal St Davao City,09284553934\n"
-        "123456789002,Reyes,Maria,B,,"
+        "\"123456789002\",Reyes,Maria,B,,"
         "Pedro Reyes,456 Mabini St Davao City,09171234567\n"
-        "123456789003,Santos,Jose,C,Jr.,"
+        "\"123456789003\",Santos,Jose,C,Jr.,"
         "Ana Santos,789 Bonifacio St Davao City,09281234567\n"
     )
     from flask import Response

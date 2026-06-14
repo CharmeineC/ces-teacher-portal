@@ -1,32 +1,45 @@
 """
 google_drive.py — Google Drive photo storage
-Organizes photos by grade and section automatically.
-Uses simple multipart upload instead of MediaIoBaseUpload.
+Uses raw HTTP multipart upload (bypasses googleapiclient MediaIoBaseUpload issues).
 """
-
 import os
 import io
 import json
 
 
-def get_drive_service():
-    """Create Google Drive service using service account credentials."""
+def get_credentials():
+    """Get service account credentials."""
     creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if not creds_json:
-        print("Google Drive: GOOGLE_CREDENTIALS not set")
         return None
     try:
         from google.oauth2.service_account import Credentials
-        from googleapiclient.discovery import build
+        import google.auth.transport.requests as google_requests
         creds_dict = json.loads(creds_json)
         creds = Credentials.from_service_account_info(
             creds_dict,
             scopes=["https://www.googleapis.com/auth/drive"]
         )
+        # Refresh to get access token
+        request = google_requests.Request()
+        creds.refresh(request)
+        return creds
+    except Exception as e:
+        print(f"Google Drive credentials error: {e}")
+        return None
+
+
+def get_drive_service():
+    """Get Drive service for folder operations."""
+    creds = get_credentials()
+    if not creds:
+        return None
+    try:
+        from googleapiclient.discovery import build
         service = build("drive", "v3", credentials=creds, cache_discovery=False)
         return service
     except Exception as e:
-        print(f"Google Drive auth error: {e}")
+        print(f"Google Drive service error: {e}")
         return None
 
 
@@ -40,28 +53,24 @@ def _make_public(service, file_id):
             fileId=file_id,
             body={"type": "anyone", "role": "reader"}
         ).execute()
-        print(f"Google Drive: made {file_id} public")
     except Exception as e:
         print(f"Google Drive: make public error: {e}")
 
 
 def get_or_create_folder(service, folder_name, parent_id=None):
-    """Get folder by name or create it."""
+    """Get or create a folder in Drive."""
     if parent_id and "drive.google.com" in str(parent_id):
         parent_id = parent_id.rstrip("/").split("/")[-1]
-    if not parent_id or not parent_id.strip():
+    if not parent_id or not str(parent_id).strip():
         parent_id = None
-
-    print(f"Google Drive: folder lookup '{folder_name}' parent='{parent_id}'")
 
     try:
         query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         if parent_id:
             query += f" and '{parent_id}' in parents"
-        results = service.files().list(q=query, fields="files(id,name)", spaces="drive").execute()
+        results = service.files().list(q=query, fields="files(id,name)").execute()
         files = results.get("files", [])
         if files:
-            print(f"Google Drive: found folder '{folder_name}' id={files[0]['id']}")
             return files[0]["id"]
     except Exception as e:
         print(f"Google Drive: folder search error: {e}")
@@ -82,115 +91,112 @@ def get_or_create_folder(service, folder_name, parent_id=None):
 
 def upload_photo(file_content, filename, grade, section_name, mime_type="image/jpeg"):
     """
-    Upload photo to Google Drive organized by grade/section.
-    Returns public URL or None if failed.
+    Upload photo using raw HTTP multipart — bypasses MediaIoBaseUpload issues.
     """
-    service = get_drive_service()
-    if not service:
+    import requests as req
+
+    creds = get_credentials()
+    if not creds:
         return None
 
     if not file_content:
-        print("Google Drive: file_content is empty!")
+        print("Google Drive: empty file content")
         return None
 
-    print(f"Google Drive: uploading '{filename}' size={len(file_content)} bytes mime={mime_type}")
+    print(f"Google Drive: uploading '{filename}' {len(file_content)} bytes")
 
     try:
-        from googleapiclient.http import MediaIoBaseUpload
-
-        # Get root folder
+        # Get folder
+        service = get_drive_service()
         root_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "").strip()
         if "drive.google.com" in root_id:
             root_id = root_id.rstrip("/").split("/")[-1]
         if not root_id:
             root_id = None
-        print(f"Google Drive: root folder id='{root_id}'")
 
-        # Create grade/section subfolder
-        grade_clean = (grade or "Unknown").replace(" ", "").replace("/", "-")
+        grade_clean   = (grade or "Unknown").replace(" ", "").replace("/", "-")
         section_clean = (section_name or "Unknown").replace(" ", "").replace("/", "-")
-        folder_name = f"{grade_clean}-{section_clean}"
-        folder_id = get_or_create_folder(service, folder_name, root_id)
+        folder_name   = f"{grade_clean}-{section_clean}"
+        folder_id     = get_or_create_folder(service, folder_name, root_id)
 
         if not folder_id:
-            print("Google Drive: could not get/create folder!")
+            print("Google Drive: no folder ID!")
             return None
 
-        print(f"Google Drive: uploading to folder_id={folder_id}")
+        # Use RAW HTTP multipart upload
+        token = creds.token
+        metadata = json.dumps({"name": filename, "parents": [folder_id]})
 
-        # Upload file using MediaIoBaseUpload
-        file_metadata = {"name": filename, "parents": [folder_id]}
-        media = MediaIoBaseUpload(
-            io.BytesIO(file_content),
-            mimetype=mime_type,
-            resumable=False
+        response = req.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+            headers={"Authorization": f"Bearer {token}"},
+            files={
+                "metadata": ("metadata", metadata, "application/json; charset=UTF-8"),
+                "file":     (filename, file_content, mime_type)
+            },
+            timeout=30
         )
 
-        uploaded = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id,name,size"
-        ).execute()
+        print(f"Google Drive upload response: {response.status_code} — {response.text[:200]}")
 
-        file_id = uploaded.get("id")
-        if not file_id:
-            print(f"Google Drive: upload returned no ID! Response: {uploaded}")
-            return None
-
-        print(f"Google Drive: uploaded successfully! id={file_id} name={uploaded.get('name')}")
-
-        # Make public
-        _make_public(service, file_id)
-
-        url = f"https://drive.google.com/uc?export=view&id={file_id}"
-        print(f"Google Drive: public URL = {url}")
-        return url
+        if response.status_code in (200, 201):
+            file_id = response.json().get("id")
+            if file_id:
+                _make_public(service, file_id)
+                url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                print(f"Google Drive: success! URL={url}")
+                return url
+            else:
+                print("Google Drive: no file ID in response")
+        else:
+            print(f"Google Drive: upload failed {response.status_code}: {response.text}")
 
     except Exception as e:
         print(f"Google Drive: upload exception: {e}")
         import traceback
         traceback.print_exc()
-        return None
+
+    return None
 
 
 def test_connection():
-    """Test Google Drive connection and upload capability."""
-    service = get_drive_service()
-    if not service:
-        return False, "GOOGLE_CREDENTIALS not configured"
+    """Test connection AND actual file upload."""
+    import requests as req
+
+    creds = get_credentials()
+    if not creds:
+        return False, "GOOGLE_CREDENTIALS not set or invalid"
+
     try:
-        about = service.about().get(fields="user,storageQuota").execute()
-        email = about.get("user", {}).get("emailAddress", "unknown")
-        quota = about.get("storageQuota", {})
-        used = int(quota.get("usage", 0)) // (1024*1024)
-        total = int(quota.get("limit", 0)) // (1024*1024*1024)
+        from googleapiclient.discovery import build
+        service = build("drive", "v3", credentials=creds, cache_discovery=False)
+        about   = service.about().get(fields="user").execute()
+        email   = about.get("user", {}).get("emailAddress", "unknown")
 
-        # Try a test upload
-        from googleapiclient.http import MediaIoBaseUpload
-        test_content = b"test"
-        test_media = MediaIoBaseUpload(io.BytesIO(test_content), mimetype="text/plain", resumable=False)
-        root_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "").strip()
-        if "drive.google.com" in root_id:
-            root_id = root_id.rstrip("/").split("/")[-1]
+        # Test actual file upload
+        token    = creds.token
+        test_content = b"test upload"
+        metadata = json.dumps({"name": "_portal_test.txt"})
+        response = req.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+            headers={"Authorization": f"Bearer {token}"},
+            files={
+                "metadata": ("metadata", metadata, "application/json; charset=UTF-8"),
+                "file":     ("_portal_test.txt", test_content, "text/plain")
+            },
+            timeout=15
+        )
 
-        test_meta = {"name": "_test_upload.txt"}
-        if root_id:
-            test_meta["parents"] = [root_id]
-
-        test_file = service.files().create(
-            body=test_meta, media_body=test_media, fields="id"
-        ).execute()
-        test_id = test_file.get("id")
-
-        # Delete test file
-        if test_id:
+        if response.status_code in (200, 201):
+            file_id = response.json().get("id")
+            # Delete test file
             try:
-                service.files().delete(fileId=test_id).execute()
+                service.files().delete(fileId=file_id).execute()
             except Exception:
                 pass
-            return True, f"✅ Connected as {email} | Storage: {used}MB used | Upload test: PASSED"
+            return True, f"✅ Connected as {email} | Upload test: PASSED"
         else:
-            return False, f"Connected as {email} but upload test FAILED — no file ID returned"
+            return False, f"Connected as {email} but upload FAILED: {response.status_code} {response.text[:100]}"
 
     except Exception as e:
         return False, f"Error: {str(e)}"

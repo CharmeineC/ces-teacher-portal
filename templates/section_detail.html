@@ -73,6 +73,33 @@ tbody tr:hover{background:#f9fafb;}
 .photo-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;}
 .photo-upload-zone:hover{border-color:var(--blue);}
 .photo-hint{font-size:12px;color:var(--muted);}
+
+/* ── Mobile Responsive ── */
+@media(max-width:768px){
+  .topbar{padding:10px 14px;}
+  .content{padding:14px;max-width:100%;}
+  .page-header{grid-template-columns:1fr;gap:12px;}
+  .page-header > div:last-child{display:flex;gap:8px;flex-wrap:wrap;}
+  .section-title{font-size:18px;}
+  .adviser-card{flex-direction:column;gap:12px;}
+  .adviser-sig{width:100%;max-width:200px;}
+  .adviser-no-sig{width:100%;max-width:200px;}
+  .stat-row{gap:6px;}
+  .stat-pill{font-size:10px;padding:3px 8px;}
+  .table-wrap{overflow-x:auto;}
+  table{min-width:650px;}
+  .modal{max-width:100%;margin:0;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:85vh;}
+  .modal-backdrop{align-items:flex-end;padding:0;}
+  .form-row-2,.form-row-3{grid-template-columns:1fr;}
+  .btn{padding:8px 12px;font-size:12px;}
+}
+
+@media(max-width:420px){
+  .section-title{font-size:16px;}
+  .page-header > div:last-child{flex-direction:column;}
+  .page-header > div:last-child a,
+  .page-header > div:last-child button{width:100%;justify-content:center;}
+}
 </style>
 </head>
 <body>

@@ -132,10 +132,14 @@ tbody tr:hover{background:#f9fafb;}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="/download_csv?grade={{ section.grade }}&section={{ section.section_name }}"
-         class="btn btn-outline">⬇ Export CSV</a>
+         class="btn btn-outline">⬇ CSV</a>
       <a href="/download_photos_zip/{{ section.grade }}/{{ section.section_name }}"
-         class="btn btn-outline">📦 Download All Photos</a>
+         class="btn btn-outline">📦 Photos ZIP</a>
       <button class="btn btn-navy" onclick="openAddStudent()">+ Add Student</button>
+      <form method="POST" action="/delete_section/{{ section.grade }}/{{ section.section_name }}"
+            onsubmit="return confirm('Delete this ENTIRE section and ALL students? This cannot be undone.')">
+        <button type="submit" class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;">🗑 Delete Section</button>
+      </form>
     </div>
   </div>
 
@@ -250,6 +254,10 @@ tbody tr:hover{background:#f9fafb;}
               {% endif %}
               {% if not s.id_printed %}
                 <button class="btn btn-outline btn-sm" onclick="openEditStudent({{ s.id }})">✏️</button>
+                <form method="POST" action="/delete_student/{{ s.id }}"
+                      onsubmit="return confirm('Delete {{ s.first_name }} {{ s.last_name }}? This cannot be undone.')">
+                  <button type="submit" class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;">🗑</button>
+                </form>
               {% else %}
                 <span style="font-size:11px;color:var(--muted)">Locked</span>
               {% endif %}

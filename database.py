@@ -295,11 +295,12 @@ def bulk_import_students(students_list):
                 existing = None
 
             if existing:
-                # UPDATE existing student — this handles section transfers
+                # UPDATE only contact/name info — NEVER overwrite grade/section
+                # This prevents students from being moved between sections accidentally
                 conn.execute("""
                     UPDATE students SET
                         first_name=?, last_name=?, middle_initial=?,
-                        extension=?, grade=?, section_name=?, adviser_name=?,
+                        extension=?, adviser_name=?,
                         emergency_contact_name=?, emergency_contact_address=?,
                         emergency_contact_number=?, updated_at=?
                     WHERE lrn=?
@@ -308,8 +309,6 @@ def bulk_import_students(students_list):
                     s.get("last_name","").strip(),
                     s.get("middle_initial","").strip(),
                     s.get("extension","").strip(),
-                    s.get("grade","").strip(),
-                    s.get("section_name","").strip(),
                     s.get("adviser_name","").strip(),
                     s.get("emergency_contact_name","").strip(),
                     s.get("emergency_contact_address","").strip(),

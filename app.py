@@ -338,10 +338,10 @@ def route_bulk_import():
             if s["first_name"] or s["last_name"]:
                 students.append(s)
 
-        added, skipped, errors = bulk_import_students(students)
-        msg = f"Imported {added} students to {grade} - {section}. Skipped {skipped}."
+        added, updated, errors = bulk_import_students(students)
+        msg = f"Done! {added} new students added, {updated} existing students updated in {grade} - {section}."
         if errors:
-            msg += f" Errors: {'; '.join(errors[:3])}"
+            msg += f" Issues: {'; '.join(errors[:3])}"
         return redirect(url_for("section_detail",
                                 grade=grade,
                                 section_name=section,

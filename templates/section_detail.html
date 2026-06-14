@@ -137,10 +137,17 @@ tbody tr:hover{background:#f9fafb;}
          class="btn btn-outline">📦 Photos ZIP</a>
       <button class="btn btn-outline" onclick="openModal('section-import-modal')">⬆ Import CSV</button>
       <button class="btn btn-navy" onclick="openAddStudent()">+ Add Student</button>
+      {% if is_admin %}
       <form method="POST" action="/delete_section/{{ section.grade }}/{{ section.section_name }}"
             onsubmit="return confirm('Delete this ENTIRE section and ALL students? This cannot be undone.')">
-        <button type="submit" class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;">🗑 Delete</button>
+        <button type="submit" class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;">🗑 Delete Section</button>
       </form>
+      {% else %}
+      <button class="btn" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;"
+        onclick="openPinModal('section','{{ section.grade }}','{{ section.section_name }}','')">
+        🗑 Delete Section
+      </button>
+      {% endif %}
     </div>
   </div>
 
@@ -255,10 +262,15 @@ tbody tr:hover{background:#f9fafb;}
               {% endif %}
               {% if not s.id_printed %}
                 <button class="btn btn-outline btn-sm" onclick="openEditStudent({{ s.id }})">✏️</button>
+                {% if is_admin %}
                 <form method="POST" action="/delete_student/{{ s.id }}"
-                      onsubmit="return confirm('Delete {{ s.first_name }} {{ s.last_name }}? This cannot be undone.')">
+                      onsubmit="return confirm('Delete {{ s.first_name }} {{ s.last_name }}?')">
                   <button type="submit" class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;">🗑</button>
                 </form>
+                {% else %}
+                <button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;"
+                  onclick="openPinModal('student','','','{{ s.id }}')">🗑</button>
+                {% endif %}
               {% else %}
                 <span style="font-size:11px;color:var(--muted)">Locked</span>
               {% endif %}
@@ -426,10 +438,54 @@ tbody tr:hover{background:#f9fafb;}
   </div>
 </div>
 
+<!-- PIN MODAL -->
+<div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;" id="pin-modal">
+  <div style="background:white;border-radius:14px;padding:24px;width:100%;max-width:360px;">
+    <div style="font-size:16px;font-weight:800;color:#1a3c5e;margin-bottom:4px;">🔐 Enter Section PIN</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:14px;" id="pin-modal-desc">Enter your PIN to confirm deletion.</div>
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:#dc2626;">
+      ⚠️ This cannot be undone. Only delete students or sections you own.
+    </div>
+    <form id="pin-delete-form" method="POST">
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block;font-weight:600;">Section PIN</label>
+        <input type="password" name="pin" id="pin-input" placeholder="Your PIN"
+               maxlength="6" required
+               style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:22px;letter-spacing:6px;text-align:center;outline:none;"/>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" onclick="closePinModal()"
+          style="background:transparent;color:#6b7280;border:1px solid #e5e7eb;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button type="submit"
+          style="background:#dc2626;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function openAddStudent(){openModal('add-student-modal');}
+
+function openPinModal(type, grade, section, studentId){
+  var modal = document.getElementById('pin-modal');
+  var form  = document.getElementById('pin-delete-form');
+  var desc  = document.getElementById('pin-modal-desc');
+  document.getElementById('pin-input').value = '';
+  if(type === 'section'){
+    form.action = '/delete_section/' + encodeURIComponent(grade) + '/' + encodeURIComponent(section);
+    desc.textContent = 'Enter the PIN to delete the ENTIRE section and ALL its students.';
+  } else {
+    form.action = '/delete_student/' + studentId;
+    desc.textContent = 'Enter the section PIN to delete this student.';
+  }
+  modal.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('pin-input').focus(); }, 100);
+}
+function closePinModal(){
+  document.getElementById('pin-modal').style.display = 'none';
+}
 
 // ── Image compression ───────────────────────────────────────────
 function compressImage(file, maxW, maxH, quality, callback){

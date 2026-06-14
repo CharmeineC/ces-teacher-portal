@@ -122,13 +122,19 @@ def is_admin():
 @app.route("/")
 def index():
     """Main teacher portal page."""
-    from database import get_dashboard_stats, auto_create_sections_from_students
-    # Auto-create sections from any imported students
+    from database import get_dashboard_stats, auto_create_sections_from_students, get_students_filtered
     auto_create_sections_from_students()
-    grade   = request.args.get("grade", "")
-    section = request.args.get("section", "")
-    search  = request.args.get("search", "")
-    students = get_students(grade or None, section or None, search or None)
+    grade        = request.args.get("grade", "")
+    section      = request.args.get("section", "")
+    search       = request.args.get("search", "")
+    filter_type  = request.args.get("filter", "")
+
+    # If a stat filter is active, show filtered students
+    if filter_type:
+        students = get_students_filtered(filter_type, grade or None, section or None)
+    else:
+        students = get_students(grade or None, section or None, search or None)
+
     sections = get_all_sections()
     grades   = get_all_grades()
     stats    = get_dashboard_stats()
@@ -141,6 +147,7 @@ def index():
                            selected_grade=grade,
                            selected_section=section,
                            search=search,
+                           filter_type=filter_type,
                            is_admin=is_admin())
 
 
@@ -162,8 +169,10 @@ def route_add_section():
                 student_name=f"SIGNATURE_{adviser_name.replace(' ','_')}"
             )
 
+    section_pin = request.form.get("section_pin", "").strip()
+
     if grade and section_name:
-        add_section(grade, section_name, adviser_name, sig_url)
+        add_section(grade, section_name, adviser_name, sig_url, section_pin)
 
         # Handle optional CSV upload
         csv_msg = ""
@@ -753,29 +762,50 @@ def api_test_drive():
 
 @app.route("/delete_section/<grade>/<section_name>", methods=["POST"])
 def route_delete_section(grade, section_name):
-    """Delete a section and all its students."""
-    from database import delete_section
+    """Delete a section — requires PIN or admin."""
+    from database import delete_section, verify_section_pin
+    pin_input = request.form.get("pin", "").strip()
+
+    if not is_admin():
+        valid, msg = verify_section_pin(grade, section_name, pin_input)
+        if not valid:
+            return redirect(url_for("index",
+                                    msg=f"Cannot delete: {msg}",
+                                    success="0"))
+
     delete_section(grade, section_name)
     return redirect(url_for("index",
-                            msg=f"Section {grade} - {section_name} and all its students deleted.",
+                            msg=f"Section {grade} - {section_name} deleted.",
                             success="1"))
 
 
 @app.route("/delete_student/<int:student_id>", methods=["POST"])
 def route_delete_student(student_id):
-    """Delete a single student."""
-    from database import delete_student, get_student_by_id
+    """Delete a student — requires section PIN or admin."""
+    from database import delete_student, get_student_by_id, verify_section_pin
     student = get_student_by_id(student_id)
-    if student:
-        grade = student["grade"]
-        section = student["section_name"]
-        delete_student(student_id)
-        return redirect(url_for("section_detail",
-                                grade=grade,
-                                section_name=section,
-                                msg="Student deleted.",
-                                success="1"))
-    return redirect(url_for("index"))
+    if not student:
+        return redirect(url_for("index"))
+
+    grade   = student["grade"]
+    section = student["section_name"]
+
+    if not is_admin():
+        pin_input = request.form.get("pin", "").strip()
+        valid, msg = verify_section_pin(grade, section, pin_input)
+        if not valid:
+            return redirect(url_for("section_detail",
+                                    grade=grade,
+                                    section_name=section,
+                                    msg=f"Cannot delete: {msg}",
+                                    success="0"))
+
+    delete_student(student_id)
+    return redirect(url_for("section_detail",
+                            grade=grade,
+                            section_name=section,
+                            msg="Student deleted.",
+                            success="1"))
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

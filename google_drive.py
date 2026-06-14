@@ -19,7 +19,7 @@ def get_drive_service():
         creds_dict = json.loads(creds_json)
         creds = Credentials.from_service_account_info(
             creds_dict,
-            scopes=["https://www.googleapis.com/auth/drive.file"]
+            scopes=["https://www.googleapis.com/auth/drive"]
         )
         service = build("drive", "v3", credentials=creds)
         return service
@@ -38,22 +38,30 @@ def get_or_create_folder(service, folder_name, parent_id=None):
     # Clean parent_id — extract just the ID if full URL was passed
     if parent_id and "drive.google.com" in parent_id:
         parent_id = parent_id.rstrip("/").split("/")[-1]
+    if parent_id and not parent_id.strip():
+        parent_id = None
 
-    query = (
-        f"name='{folder_name}' and "
-        f"mimeType='application/vnd.google-apps.folder' and "
-        f"trashed=false"
-    )
-    if parent_id:
-        query += f" and '{parent_id}' in parents"
+    print(f"Google Drive: looking for folder '{folder_name}' in parent '{parent_id}'")
 
-    results = service.files().list(
-        q=query, fields="files(id, name)", spaces="drive"
-    ).execute()
-    files = results.get("files", [])
+    try:
+        query = (
+            f"name='{folder_name}' and "
+            f"mimeType='application/vnd.google-apps.folder' and "
+            f"trashed=false"
+        )
+        if parent_id:
+            query += f" and '{parent_id}' in parents"
 
-    if files:
-        return files[0]["id"]
+        results = service.files().list(
+            q=query, fields="files(id, name)", spaces="drive"
+        ).execute()
+        files = results.get("files", [])
+
+        if files:
+            print(f"Google Drive: found existing folder '{folder_name}' id={files[0]['id']}")
+            return files[0]["id"]
+    except Exception as e:
+        print(f"Google Drive: folder search error: {e}")
 
     # Create folder
     metadata = {
@@ -63,12 +71,15 @@ def get_or_create_folder(service, folder_name, parent_id=None):
     if parent_id:
         metadata["parents"] = [parent_id]
 
-    folder = service.files().create(body=metadata, fields="id").execute()
-    folder_id = folder.get("id")
-
-    # Make folder publicly accessible
-    _make_public(service, folder_id)
-    return folder_id
+    try:
+        folder = service.files().create(body=metadata, fields="id").execute()
+        folder_id = folder.get("id")
+        print(f"Google Drive: created folder '{folder_name}' id={folder_id}")
+        _make_public(service, folder_id)
+        return folder_id
+    except Exception as e:
+        print(f"Google Drive: folder create error: {e}")
+        return None
 
 
 def _make_public(service, file_id):
@@ -136,7 +147,7 @@ def upload_photo(file_content, filename, grade, section_name, mime_type="image/j
         media = MediaIoBaseUpload(
             io.BytesIO(file_content),
             mimetype=mime_type,
-            resumable=True
+            resumable=False
         )
         uploaded = service.files().create(
             body=file_metadata,

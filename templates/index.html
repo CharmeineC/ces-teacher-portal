@@ -144,6 +144,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 
 <!-- Topbar -->
 <div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <div class="topbar-brand">
     <div class="logo-placeholder">C</div>
     <div class="school-info">
@@ -226,10 +227,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="welcome-title">👋 Welcome, Teacher!</div>
       <div class="welcome-sub">Follow these steps to submit your class information for ID printing.</div>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-text">Click "Add My Class" and enter your name, grade and section</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Upload your adviser signature</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text">Download the CSV template and fill in your students</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text">Upload the filled CSV — students appear automatically!</div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Click "Add My Class", enter your name, grade, section and upload your signature</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Download the CSV template, fill in your students and upload it</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Students appear automatically in your section!</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Upload each student's photo individually by clicking the 📷 camera icon on their row</div></div>
       </div>
       <div class="welcome-actions">
         <button class="btn-white" onclick="openModal('add-class-modal')">+ Add My Class</button>
@@ -387,7 +388,16 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
   </div>
 </div>
 
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
 <script>
+function toggleSidebar(){
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+}
+
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));

@@ -35,7 +35,7 @@ SCHOOL_NAME    = os.environ.get("SCHOOL_NAME", "Communal Elementary School")
 # or set CLOUDINARY_URL env var to use Cloudinary
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "static/uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
 
 def allowed_image(filename):
@@ -94,6 +94,7 @@ def upload_photo(file, grade="", section_name="", student_name=""):
 
     # Local storage fallback
     try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         filename_local = f"{int(time.time())}_{filename}"
         filepath = os.path.join(UPLOAD_FOLDER, filename_local)
         with open(filepath, "wb") as f_out:
@@ -102,7 +103,14 @@ def upload_photo(file, grade="", section_name="", student_name=""):
         return f"/static/uploads/{filename_local}"
     except Exception as e:
         print(f"Local upload failed: {e}")
-        return ""
+        # Last resort: return base64 data URL so image shows in browser
+        try:
+            import base64
+            b64 = base64.b64encode(file_content).decode()
+            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+            return f"data:image/{ext};base64,{b64}"
+        except Exception:
+            return ""
 
 
 def is_admin():
@@ -158,39 +166,53 @@ def route_add_section():
         add_section(grade, section_name, adviser_name, sig_url)
 
         # Handle optional CSV upload
+        csv_added = 0
+        csv_msg = ""
         if "csv_file" in request.files:
             csv_file = request.files["csv_file"]
             if csv_file and csv_file.filename and csv_file.filename.endswith(".csv"):
                 try:
-                    import io, csv as csv_mod
-                    stream  = io.StringIO(csv_file.stream.read().decode("utf-8-sig"))
-                    reader  = csv_mod.DictReader(stream)
+                    import io as _io, csv as csv_mod
+                    stream = _io.StringIO(csv_file.stream.read().decode("utf-8-sig"))
+                    reader = csv_mod.DictReader(stream)
                     students = []
                     for row in reader:
+                        raw_lrn = str(row.get("lrn") or row.get("LRN") or "").strip()
+                        # Clean scientific notation LRNs
+                        try:
+                            if 'e' in raw_lrn.lower():
+                                raw_lrn = str(int(float(raw_lrn)))
+                            elif '.' in raw_lrn:
+                                raw_lrn = str(int(float(raw_lrn)))
+                        except Exception:
+                            pass
                         s = {
-                            "lrn":           str(row.get("lrn") or row.get("LRN") or "").strip(),
+                            "lrn":           raw_lrn,
                             "first_name":    str(row.get("first_name") or row.get("First Name") or "").strip(),
                             "last_name":     str(row.get("last_name") or row.get("Last Name") or "").strip(),
                             "middle_initial":str(row.get("middle_initial") or row.get("MI") or "").strip(),
                             "extension":     str(row.get("extension") or row.get("Extension") or "").strip(),
-                            "grade":         str(row.get("grade") or row.get("Grade") or grade).strip(),
-                            "section_name":  str(row.get("section_name") or row.get("Section") or section_name).strip(),
-                            "adviser_name":  str(row.get("adviser_name") or row.get("Adviser") or adviser_name).strip(),
+                            # ALWAYS use grade/section from form - never from CSV
+                            "grade":         grade,
+                            "section_name":  section_name,
+                            "adviser_name":  adviser_name,
                             "emergency_contact_name":    str(row.get("emergency_contact_name") or "").strip(),
                             "emergency_contact_address": str(row.get("emergency_contact_address") or "").strip(),
                             "emergency_contact_number":  str(row.get("emergency_contact_number") or "").strip(),
                         }
                         if s["first_name"] or s["last_name"]:
                             students.append(s)
-                    added, skipped, errors = bulk_import_students(students)
-                    from database import auto_create_sections_from_students
-                    auto_create_sections_from_students()
+                    csv_added, csv_updated, csv_errors = bulk_import_students(students)
+                    csv_msg = f" {csv_added} students added, {csv_updated} updated."
+                    if csv_errors:
+                        csv_msg += f" Issues: {'; '.join(csv_errors[:2])}"
                 except Exception as e:
-                    print(f"CSV import error: {e}")
+                    print(f"CSV import error in add_section: {e}")
+                    csv_msg = f" CSV error: {str(e)}"
 
     if grade and section_name:
         return redirect(url_for("index",
-                                msg=f"Class {grade} - {section_name} saved successfully!",
+                                msg=f"Class {grade} - {section_name} saved!{csv_msg}",
                                 success="1"))
     return redirect(url_for("index", msg="Section saved!", success="1"))
 

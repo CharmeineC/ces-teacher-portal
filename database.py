@@ -270,18 +270,85 @@ def get_student_by_id(student_id):
 
 
 def bulk_import_students(students_list):
-    """Import a list of student dicts. Returns (added, skipped, errors)."""
-    added = 0; skipped = 0; errors = []
+    """
+    Import a list of student dicts.
+    - If LRN exists → UPDATE student info (handles transfers to new section)
+    - If LRN not found → INSERT new student
+    - Returns (added, updated, errors)
+    """
+    added = 0; updated = 0; errors = []
     for s in students_list:
         if not s.get("first_name") and not s.get("last_name"):
             continue
-        success, msg = add_student(s)
-        if success:
-            added += 1
-        else:
-            skipped += 1
-            errors.append(f"{s.get('lrn','?')}: {msg}")
-    return added, skipped, errors
+
+        lrn = str(s.get("lrn") or "").strip()
+        conn = get_connection()
+        try:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            if lrn:
+                # Check if student with this LRN already exists
+                existing = conn.execute(
+                    "SELECT id FROM students WHERE lrn=?", (lrn,)
+                ).fetchone()
+            else:
+                existing = None
+
+            if existing:
+                # UPDATE existing student — this handles section transfers
+                conn.execute("""
+                    UPDATE students SET
+                        first_name=?, last_name=?, middle_initial=?,
+                        extension=?, grade=?, section_name=?, adviser_name=?,
+                        emergency_contact_name=?, emergency_contact_address=?,
+                        emergency_contact_number=?, updated_at=?
+                    WHERE lrn=?
+                """, (
+                    s.get("first_name","").strip(),
+                    s.get("last_name","").strip(),
+                    s.get("middle_initial","").strip(),
+                    s.get("extension","").strip(),
+                    s.get("grade","").strip(),
+                    s.get("section_name","").strip(),
+                    s.get("adviser_name","").strip(),
+                    s.get("emergency_contact_name","").strip(),
+                    s.get("emergency_contact_address","").strip(),
+                    s.get("emergency_contact_number","").strip(),
+                    now, lrn
+                ))
+                conn.commit()
+                updated += 1
+            else:
+                # INSERT new student
+                conn.execute("""
+                    INSERT INTO students (
+                        lrn, first_name, last_name, middle_initial, extension,
+                        grade, section_name, adviser_name,
+                        emergency_contact_name, emergency_contact_address,
+                        emergency_contact_number, created_at, updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """, (
+                    lrn,
+                    s.get("first_name","").strip(),
+                    s.get("last_name","").strip(),
+                    s.get("middle_initial","").strip(),
+                    s.get("extension","").strip(),
+                    s.get("grade","").strip(),
+                    s.get("section_name","").strip(),
+                    s.get("adviser_name","").strip(),
+                    s.get("emergency_contact_name","").strip(),
+                    s.get("emergency_contact_address","").strip(),
+                    s.get("emergency_contact_number","").strip(),
+                    now, now
+                ))
+                conn.commit()
+                added += 1
+        except Exception as e:
+            errors.append(f"{lrn or 'unknown'}: {str(e)}")
+        finally:
+            conn.close()
+
+    return added, updated, errors
 
 
 def get_stats():

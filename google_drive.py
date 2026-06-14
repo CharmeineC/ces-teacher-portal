@@ -1,43 +1,48 @@
 """
 google_drive.py — Google Drive photo storage
-Uses raw HTTP multipart upload (bypasses googleapiclient MediaIoBaseUpload issues).
+Uses correct multipart/related upload format required by Google Drive API.
 """
-import os
-import io
-import json
+import os, io, json, uuid
 
 
 def get_credentials():
-    """Get service account credentials."""
     creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if not creds_json:
         return None
     try:
         from google.oauth2.service_account import Credentials
         import google.auth.transport.requests as google_requests
-        creds_dict = json.loads(creds_json)
         creds = Credentials.from_service_account_info(
-            creds_dict,
+            json.loads(creds_json),
             scopes=["https://www.googleapis.com/auth/drive"]
         )
-        # Refresh to get access token
-        request = google_requests.Request()
-        creds.refresh(request)
+        google_requests.Request()(creds, None, None)  # refresh token
         return creds
     except Exception as e:
-        print(f"Google Drive credentials error: {e}")
-        return None
+        # Try alternate refresh method
+        try:
+            from google.oauth2.service_account import Credentials
+            import google.auth.transport.requests as gtr
+            creds = Credentials.from_service_account_info(
+                json.loads(creds_json),
+                scopes=["https://www.googleapis.com/auth/drive"]
+            )
+            req = gtr.Request()
+            creds.refresh(req)
+            return creds
+        except Exception as e2:
+            print(f"Google Drive credentials error: {e2}")
+            return None
 
 
-def get_drive_service():
-    """Get Drive service for folder operations."""
-    creds = get_credentials()
+def get_drive_service(creds=None):
+    if creds is None:
+        creds = get_credentials()
     if not creds:
         return None
     try:
         from googleapiclient.discovery import build
-        service = build("drive", "v3", credentials=creds, cache_discovery=False)
-        return service
+        return build("drive", "v3", credentials=creds, cache_discovery=False)
     except Exception as e:
         print(f"Google Drive service error: {e}")
         return None
@@ -54,113 +59,127 @@ def _make_public(service, file_id):
             body={"type": "anyone", "role": "reader"}
         ).execute()
     except Exception as e:
-        print(f"Google Drive: make public error: {e}")
+        print(f"Make public error: {e}")
 
 
 def get_or_create_folder(service, folder_name, parent_id=None):
-    """Get or create a folder in Drive."""
     if parent_id and "drive.google.com" in str(parent_id):
         parent_id = parent_id.rstrip("/").split("/")[-1]
     if not parent_id or not str(parent_id).strip():
         parent_id = None
 
     try:
-        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        q = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         if parent_id:
-            query += f" and '{parent_id}' in parents"
-        results = service.files().list(q=query, fields="files(id,name)").execute()
-        files = results.get("files", [])
+            q += f" and '{parent_id}' in parents"
+        res = service.files().list(q=q, fields="files(id)").execute()
+        files = res.get("files", [])
         if files:
             return files[0]["id"]
     except Exception as e:
-        print(f"Google Drive: folder search error: {e}")
+        print(f"Folder search error: {e}")
 
     try:
-        metadata = {"name": folder_name, "mimeType": "application/vnd.google-apps.folder"}
+        meta = {"name": folder_name, "mimeType": "application/vnd.google-apps.folder"}
         if parent_id:
-            metadata["parents"] = [parent_id]
-        folder = service.files().create(body=metadata, fields="id").execute()
-        folder_id = folder.get("id")
-        print(f"Google Drive: created folder '{folder_name}' id={folder_id}")
-        _make_public(service, folder_id)
-        return folder_id
+            meta["parents"] = [parent_id]
+        f = service.files().create(body=meta, fields="id").execute()
+        fid = f.get("id")
+        print(f"Created folder '{folder_name}' id={fid}")
+        _make_public(service, fid)
+        return fid
     except Exception as e:
-        print(f"Google Drive: folder create error: {e}")
+        print(f"Folder create error: {e}")
         return None
 
 
-def upload_photo(file_content, filename, grade, section_name, mime_type="image/jpeg"):
+def _multipart_related_upload(token, metadata, file_content, mime_type):
     """
-    Upload photo using raw HTTP multipart — bypasses MediaIoBaseUpload issues.
+    Correct Google Drive multipart/related upload.
+    This is the format Google Drive API actually requires.
     """
     import requests as req
 
-    creds = get_credentials()
-    if not creds:
-        return None
+    boundary = uuid.uuid4().hex
 
+    # Build multipart/related body
+    body = (
+        f"--{boundary}\r\n"
+        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{json.dumps(metadata)}\r\n"
+        f"--{boundary}\r\n"
+        f"Content-Type: {mime_type}\r\n\r\n"
+    ).encode("utf-8") + file_content + f"\r\n--{boundary}--".encode("utf-8")
+
+    resp = req.post(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": f"multipart/related; boundary={boundary}",
+        },
+        data=body,
+        timeout=30
+    )
+    return resp
+
+
+def upload_photo(file_content, filename, grade, section_name, mime_type="image/jpeg"):
+    """Upload photo to Google Drive. Returns public URL or None."""
     if not file_content:
         print("Google Drive: empty file content")
         return None
 
-    print(f"Google Drive: uploading '{filename}' {len(file_content)} bytes")
+    creds = get_credentials()
+    if not creds:
+        print("Google Drive: no credentials")
+        return None
+
+    print(f"Google Drive: uploading '{filename}' ({len(file_content)} bytes)")
 
     try:
-        # Get folder
-        service = get_drive_service()
+        service = get_drive_service(creds)
+
+        # Get root folder
         root_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "").strip()
         if "drive.google.com" in root_id:
             root_id = root_id.rstrip("/").split("/")[-1]
         if not root_id:
             root_id = None
 
-        grade_clean   = (grade or "Unknown").replace(" ", "").replace("/", "-")
-        section_clean = (section_name or "Unknown").replace(" ", "").replace("/", "-")
-        folder_name   = f"{grade_clean}-{section_clean}"
-        folder_id     = get_or_create_folder(service, folder_name, root_id)
+        # Create grade/section folder
+        grade_c   = (grade or "Unknown").replace(" ", "").replace("/", "-")
+        section_c = (section_name or "Unknown").replace(" ", "").replace("/", "-")
+        folder_id = get_or_create_folder(service, f"{grade_c}-{section_c}", root_id)
 
         if not folder_id:
-            print("Google Drive: no folder ID!")
+            print("Google Drive: could not get folder")
             return None
 
-        # Use RAW HTTP multipart upload
-        token = creds.token
-        metadata = json.dumps({"name": filename, "parents": [folder_id]})
+        # Upload using correct multipart/related format
+        metadata = {"name": filename, "parents": [folder_id]}
+        resp = _multipart_related_upload(creds.token, metadata, file_content, mime_type)
 
-        response = req.post(
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-            headers={"Authorization": f"Bearer {token}"},
-            files={
-                "metadata": ("metadata", metadata, "application/json; charset=UTF-8"),
-                "file":     (filename, file_content, mime_type)
-            },
-            timeout=30
-        )
+        print(f"Google Drive response: {resp.status_code} — {resp.text[:300]}")
 
-        print(f"Google Drive upload response: {response.status_code} — {response.text[:200]}")
-
-        if response.status_code in (200, 201):
-            file_id = response.json().get("id")
+        if resp.status_code in (200, 201):
+            file_id = resp.json().get("id")
             if file_id:
                 _make_public(service, file_id)
                 url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                print(f"Google Drive: success! URL={url}")
+                print(f"Google Drive: success! {url}")
                 return url
-            else:
-                print("Google Drive: no file ID in response")
         else:
-            print(f"Google Drive: upload failed {response.status_code}: {response.text}")
+            print(f"Google Drive upload failed: {resp.status_code} {resp.text}")
 
     except Exception as e:
-        print(f"Google Drive: upload exception: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Google Drive exception: {e}")
+        import traceback; traceback.print_exc()
 
     return None
 
 
 def test_connection():
-    """Test connection AND actual file upload."""
+    """Test connection and upload capability."""
     import requests as req
 
     creds = get_credentials()
@@ -168,35 +187,23 @@ def test_connection():
         return False, "GOOGLE_CREDENTIALS not set or invalid"
 
     try:
-        from googleapiclient.discovery import build
-        service = build("drive", "v3", credentials=creds, cache_discovery=False)
-        about   = service.about().get(fields="user").execute()
-        email   = about.get("user", {}).get("emailAddress", "unknown")
+        service = get_drive_service(creds)
+        about = service.about().get(fields="user").execute()
+        email = about.get("user", {}).get("emailAddress", "unknown")
 
-        # Test actual file upload
-        token    = creds.token
-        test_content = b"test upload"
-        metadata = json.dumps({"name": "_portal_test.txt"})
-        response = req.post(
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-            headers={"Authorization": f"Bearer {token}"},
-            files={
-                "metadata": ("metadata", metadata, "application/json; charset=UTF-8"),
-                "file":     ("_portal_test.txt", test_content, "text/plain")
-            },
-            timeout=15
+        # Test upload with multipart/related
+        test_meta = {"name": "_portal_test_.txt"}
+        resp = _multipart_related_upload(
+            creds.token, test_meta, b"test upload content", "text/plain"
         )
 
-        if response.status_code in (200, 201):
-            file_id = response.json().get("id")
-            # Delete test file
-            try:
-                service.files().delete(fileId=file_id).execute()
-            except Exception:
-                pass
+        if resp.status_code in (200, 201):
+            fid = resp.json().get("id")
+            try: service.files().delete(fileId=fid).execute()
+            except: pass
             return True, f"✅ Connected as {email} | Upload test: PASSED"
         else:
-            return False, f"Connected as {email} but upload FAILED: {response.status_code} {response.text[:100]}"
+            return False, f"Connected as {email} | Upload FAILED: {resp.status_code} — {resp.text[:200]}"
 
     except Exception as e:
         return False, f"Error: {str(e)}"

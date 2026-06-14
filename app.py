@@ -580,6 +580,102 @@ def download_photos_zip(grade, section_name):
     )
 
 
+@app.route("/download_template_xlsx")
+def download_template_xlsx():
+    """Generate Excel template with LRN column pre-formatted as text."""
+    import io
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Student List"
+
+        # Headers
+        headers = [
+            'lrn', 'last_name', 'first_name', 'middle_initial',
+            'extension', 'emergency_contact_name',
+            'emergency_contact_address', 'emergency_contact_number'
+        ]
+
+        # Style header row
+        header_fill = PatternFill(start_color="007a4d", end_color="007a4d", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        # Sample data rows
+        samples = [
+            ['123456789001', 'dela Cruz', 'Juan', 'A', '',
+             'Rosa dela Cruz', '123 Rizal St Davao City', '09284553934'],
+            ['123456789002', 'Reyes', 'Maria', 'B', '',
+             'Pedro Reyes', '456 Mabini St Davao City', '09171234567'],
+            ['123456789003', 'Santos', 'Jose', 'C', 'Jr.',
+             'Ana Santos', '789 Bonifacio Ave', '09281234567'],
+        ]
+        for row_data in samples:
+            ws.append(row_data)
+
+        # Format entire LRN column (A) as TEXT to prevent scientific notation
+        from openpyxl.styles import numbers
+        for row in ws.iter_rows(min_row=1, max_row=500, min_col=1, max_col=1):
+            for cell in row:
+                cell.number_format = '@'  # @ means Text format in Excel
+
+        # Set column widths
+        col_widths = [18, 18, 18, 8, 8, 22, 30, 18]
+        for i, width in enumerate(col_widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = width
+
+        # Add instructions sheet
+        ws2 = wb.create_sheet("Instructions")
+        ws2['A1'] = "HOW TO USE THIS TEMPLATE"
+        ws2['A1'].font = Font(bold=True, size=14, color="007a4d")
+        instructions = [
+            "",
+            "1. Go to the 'Student List' sheet (tab at the bottom)",
+            "2. The LRN column (column A) is already formatted as Text — do not change this",
+            "3. Delete the sample data rows (rows 2, 3, 4) and enter your students",
+            "4. Fill in one student per row",
+            "5. Leave cells blank if information is not available",
+            "",
+            "TO UPLOAD TO GOOGLE SHEETS:",
+            "1. Go to sheets.google.com",
+            "2. Click File → Import → Upload this file",
+            "3. Select 'Replace spreadsheet'",
+            "4. Click Import data",
+            "5. Your headers and data are already there!",
+            "",
+            "TO SAVE AS CSV FOR UPLOAD:",
+            "In Excel: File → Save As → CSV (Comma delimited)",
+            "In Google Sheets: File → Download → Comma Separated Values (.csv)",
+            "",
+            "IMPORTANT: Each student must have a unique LRN number!",
+        ]
+        for i, line in enumerate(instructions, 2):
+            ws2[f'A{i}'] = line
+        ws2.column_dimensions['A'].width = 60
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        from flask import Response
+        return Response(
+            output.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': 'attachment; filename=CES_Student_Template.xlsx'}
+        )
+    except ImportError:
+        return redirect(url_for('download_template_csv'))
+
+
 @app.route("/download_template_csv")
 def download_template_csv():
     """

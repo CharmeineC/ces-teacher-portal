@@ -199,7 +199,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
     {% endfor %}
     <div class="sidebar-bottom">
       <a href="/download_csv" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;margin-bottom:8px;">⬇ Export All CSV</a>
-      <a href="/download_template_xlsx" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;">📥 Download Template</a>
+      <a href="https://docs.google.com/spreadsheets/d/1g8N8e3-fvPvYZFa6D76el8pyBMM5bv75DbWOMsWqvMU/copy" target="_blank" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;">📊 Google Sheets Template</a>
     </div>
   </div>
 
@@ -226,13 +226,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="welcome-sub">Follow these steps to submit your class information.</div>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-text">Click "Add My Class", enter your name, grade, section and upload your signature</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Download the template, open in Google Sheets, fill in your students, download as CSV and upload</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Click "📊 Open Google Sheets Template", make a copy, fill in your students, download as CSV</div></div>
         <div class="step"><div class="step-num">3</div><div class="step-text">Students appear automatically in your section!</div></div>
         <div class="step"><div class="step-num">4</div><div class="step-text">Upload each student's photo individually by clicking the 📷 camera icon on their row</div></div>
       </div>
       <div class="welcome-actions">
         <button class="btn-white" onclick="openModal('add-class-modal')">+ Add My Class</button>
-        <a href="/download_template_xlsx" class="btn-ghost">📥 Download Student Template</a>
+        <a href="https://docs.google.com/spreadsheets/d/1g8N8e3-fvPvYZFa6D76el8pyBMM5bv75DbWOMsWqvMU/copy" target="_blank" class="btn-ghost">📊 Open Google Sheets Template</a>
       </div>
     </div>
 
@@ -290,67 +290,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
   </div>
 </div>
 
-<!-- TEMPLATE INSTRUCTIONS MODAL -->
-<div class="modal-backdrop" id="gsheet-modal">
-  <div class="modal" style="max-width:580px;">
-    <div class="modal-title">📥 How to Use the Student Template</div>
-    <div class="modal-sub">The template file already has the correct headers and LRN formatting.</div>
 
-    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
-
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
-        <div style="font-size:13px;line-height:1.6;">
-          Click <strong>"📥 Download Student Template"</strong> — you will get a file called <strong>CES_Student_Template.xlsx</strong>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
-        <div style="font-size:13px;line-height:1.6;">
-          <strong>Open the file in Google Sheets (recommended):</strong><br/>
-          Go to <a href="https://sheets.google.com" target="_blank" style="color:var(--green);font-weight:600;">sheets.google.com</a> → 
-          Click <strong>Blank spreadsheet</strong> → 
-          <strong>File → Import → Upload</strong> → select the downloaded file
-        </div>
-      </div>
-
-      <div style="background:var(--green-light);border:1px solid var(--green-mid);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--green-dark);line-height:1.6;">
-        ✅ The LRN column is already formatted as <strong>Text</strong> — LRN numbers will NOT be converted to scientific notation
-      </div>
-
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
-        <div style="font-size:13px;line-height:1.6;">
-          <strong>Delete the 3 sample rows</strong> and fill in your students. One student per row. Each student must have a <strong>unique LRN</strong>.
-        </div>
-      </div>
-
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
-        <div style="font-size:13px;line-height:1.6;">
-          When done: In Google Sheets click <strong>File → Download → Comma Separated Values (.csv)</strong>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
-        <div style="font-size:13px;line-height:1.6;">
-          Come back here → go to your section page → click <strong>"⬆ Import CSV"</strong> to upload
-        </div>
-      </div>
-
-    </div>
-
-    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;">
-      <a href="/download_template_xlsx"
-         style="font-size:13px;color:var(--green);font-weight:700;text-decoration:none;">
-        📥 Download Template Now →
-      </a>
-      <button type="button" class="btn btn-green" onclick="closeModal('gsheet-modal')">Got it! ✓</button>
-    </div>
-  </div>
-</div>
 
 <!-- ADD MY CLASS MODAL -->
 <div class="modal-backdrop" id="add-class-modal">
@@ -449,37 +389,40 @@ function updateImportGrade(sel){
   document.getElementById('import-grade').value=opt.dataset.grade||'';
 }
 function openGSheetTemplate(){
-  // Copy headers to clipboard
-  copyHeaders();
-  // Open new Google Sheet in new tab
-  window.open('https://sheets.new', '_blank');
-  // Show instructions modal
-  openModal('gsheet-modal');
-}
-
-function copyHeaders(){
+  // Tab-separated headers — when pasted in Google Sheets,
+  // each header goes into its own column automatically
   var headers = 'lrn	last_name	first_name	middle_initial	extension	emergency_contact_name	emergency_contact_address	emergency_contact_number';
-  if(navigator.clipboard){
+
+  // Copy to clipboard
+  if(navigator.clipboard && window.isSecureContext){
     navigator.clipboard.writeText(headers).then(function(){
-      var btn = document.getElementById('copy-btn');
-      if(btn){
-        btn.textContent = '✅ Headers Copied!';
-        btn.style.background = '#065f46';
-        setTimeout(function(){ 
-          btn.textContent = '📋 Copy Headers Again'; 
-          btn.style.background = 'var(--green)';
-        }, 2000);
-      }
+      // Open Google Sheets in new tab
+      window.open('https://sheets.new', '_blank');
+      // Show instructions modal
+      openModal('gsheet-modal');
+    }).catch(function(){
+      // Fallback
+      fallbackCopy(headers);
+      window.open('https://sheets.new', '_blank');
+      openModal('gsheet-modal');
     });
   } else {
-    // Fallback for older browsers
-    var ta = document.createElement('textarea');
-    ta.value = headers;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    fallbackCopy(headers);
+    window.open('https://sheets.new', '_blank');
+    openModal('gsheet-modal');
   }
+}
+
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
 }
 
 function previewSig(input){

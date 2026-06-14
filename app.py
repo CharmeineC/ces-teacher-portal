@@ -66,28 +66,39 @@ def upload_photo(file, grade="", section_name="", student_name=""):
         ext = "jpg"
     filename = f"{clean_name}.{ext}"
 
+    # Read file content ONCE at the very start
+    try:
+        file_content = file.read()
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return ""
+
+    if not file_content:
+        print("File content is empty!")
+        return ""
+
+    mime_type = getattr(file, "content_type", None) or "image/jpeg"
+    print(f"Upload: {filename}, size={len(file_content)} bytes, type={mime_type}, grade={grade}, section={section_name}")
+
     # Try Google Drive first
     if is_configured():
         try:
-            file_content = file.read()
-            mime_type = file.content_type or "image/jpeg"
             url = gd_upload(file_content, filename, grade, section_name, mime_type)
             if url:
+                print(f"Google Drive upload success: {url}")
                 return url
-            # Reset file pointer if Google Drive failed
-            file.stream.seek(0)
+            else:
+                print("Google Drive upload returned None — falling back to local")
         except Exception as e:
-            print(f"Google Drive upload failed: {e}")
-            try:
-                file.stream.seek(0)
-            except Exception:
-                pass
+            print(f"Google Drive upload error: {e}")
 
     # Local storage fallback
     try:
         filename_local = f"{int(time.time())}_{filename}"
         filepath = os.path.join(UPLOAD_FOLDER, filename_local)
-        file.save(filepath)
+        with open(filepath, "wb") as f_out:
+            f_out.write(file_content)
+        print(f"Saved locally: {filepath}")
         return f"/static/uploads/{filename_local}"
     except Exception as e:
         print(f"Local upload failed: {e}")
@@ -581,6 +592,33 @@ def api_test_drive():
     from google_drive import test_connection
     success, message = test_connection()
     return jsonify({"success": success, "message": message})
+
+
+@app.route("/delete_section/<grade>/<section_name>", methods=["POST"])
+def route_delete_section(grade, section_name):
+    """Delete a section and all its students."""
+    from database import delete_section
+    delete_section(grade, section_name)
+    return redirect(url_for("index",
+                            msg=f"Section {grade} - {section_name} and all its students deleted.",
+                            success="1"))
+
+
+@app.route("/delete_student/<int:student_id>", methods=["POST"])
+def route_delete_student(student_id):
+    """Delete a single student."""
+    from database import delete_student, get_student_by_id
+    student = get_student_by_id(student_id)
+    if student:
+        grade = student["grade"]
+        section = student["section_name"]
+        delete_student(student_id)
+        return redirect(url_for("section_detail",
+                                grade=grade,
+                                section_name=section,
+                                msg="Student deleted.",
+                                success="1"))
+    return redirect(url_for("index"))
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

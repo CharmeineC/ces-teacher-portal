@@ -166,49 +166,67 @@ def route_add_section():
         add_section(grade, section_name, adviser_name, sig_url)
 
         # Handle optional CSV upload
-        csv_added = 0
         csv_msg = ""
         if "csv_file" in request.files:
             csv_file = request.files["csv_file"]
-            if csv_file and csv_file.filename and csv_file.filename.endswith(".csv"):
+            fname = csv_file.filename if csv_file else ""
+            print(f"CSV file received: '{fname}'")
+            # Accept .csv and .CSV and any case
+            if csv_file and fname and fname.lower().endswith(".csv"):
                 try:
-                    import io as _io, csv as csv_mod
-                    stream = _io.StringIO(csv_file.stream.read().decode("utf-8-sig"))
-                    reader = csv_mod.DictReader(stream)
+                    raw_bytes = csv_file.stream.read()
+                    print(f"CSV bytes read: {len(raw_bytes)}")
+                    # Try utf-8-sig first, then utf-8, then latin-1
+                    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+                        try:
+                            decoded = raw_bytes.decode(enc)
+                            break
+                        except Exception:
+                            continue
+                    stream = io.StringIO(decoded)
+                    reader = csv.DictReader(stream)
+                    headers = reader.fieldnames
+                    print(f"CSV headers found: {headers}")
                     students = []
                     for row in reader:
-                        raw_lrn = str(row.get("lrn") or row.get("LRN") or "").strip()
-                        # Clean scientific notation LRNs
+                        # Flexible column matching (case-insensitive)
+                        row_lower = {k.lower().strip(): v for k, v in row.items() if k}
+                        raw_lrn = str(row_lower.get("lrn") or "").strip()
+                        # Clean scientific notation
                         try:
-                            if 'e' in raw_lrn.lower():
-                                raw_lrn = str(int(float(raw_lrn)))
-                            elif '.' in raw_lrn:
+                            if raw_lrn and ('e' in raw_lrn.lower() or '.' in raw_lrn):
                                 raw_lrn = str(int(float(raw_lrn)))
                         except Exception:
                             pass
                         s = {
                             "lrn":           raw_lrn,
-                            "first_name":    str(row.get("first_name") or row.get("First Name") or "").strip(),
-                            "last_name":     str(row.get("last_name") or row.get("Last Name") or "").strip(),
-                            "middle_initial":str(row.get("middle_initial") or row.get("MI") or "").strip(),
-                            "extension":     str(row.get("extension") or row.get("Extension") or "").strip(),
-                            # ALWAYS use grade/section from form - never from CSV
+                            "first_name":    str(row_lower.get("first_name") or row_lower.get("firstname") or "").strip(),
+                            "last_name":     str(row_lower.get("last_name") or row_lower.get("lastname") or "").strip(),
+                            "middle_initial":str(row_lower.get("middle_initial") or row_lower.get("mi") or "").strip(),
+                            "extension":     str(row_lower.get("extension") or row_lower.get("ext") or "").strip(),
                             "grade":         grade,
                             "section_name":  section_name,
                             "adviser_name":  adviser_name,
-                            "emergency_contact_name":    str(row.get("emergency_contact_name") or "").strip(),
-                            "emergency_contact_address": str(row.get("emergency_contact_address") or "").strip(),
-                            "emergency_contact_number":  str(row.get("emergency_contact_number") or "").strip(),
+                            "emergency_contact_name":    str(row_lower.get("emergency_contact_name") or "").strip(),
+                            "emergency_contact_address": str(row_lower.get("emergency_contact_address") or "").strip(),
+                            "emergency_contact_number":  str(row_lower.get("emergency_contact_number") or "").strip(),
                         }
                         if s["first_name"] or s["last_name"]:
                             students.append(s)
-                    csv_added, csv_updated, csv_errors = bulk_import_students(students)
-                    csv_msg = f" {csv_added} students added, {csv_updated} updated."
-                    if csv_errors:
-                        csv_msg += f" Issues: {'; '.join(csv_errors[:2])}"
+                    print(f"Students parsed from CSV: {len(students)}")
+                    if students:
+                        csv_added, csv_updated, csv_errors = bulk_import_students(students)
+                        csv_msg = f" {csv_added} students added, {csv_updated} updated."
+                        if csv_errors:
+                            csv_msg += f" Issues: {'; '.join(csv_errors[:2])}"
+                    else:
+                        csv_msg = " No valid student rows found in CSV."
                 except Exception as e:
-                    print(f"CSV import error in add_section: {e}")
+                    import traceback
+                    traceback.print_exc()
                     csv_msg = f" CSV error: {str(e)}"
+            else:
+                print(f"CSV file skipped — filename: '{fname}' not ending in .csv")
 
     if grade and section_name:
         return redirect(url_for("index",

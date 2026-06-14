@@ -53,6 +53,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .s5::after{background:#0891b2;}
 .stat-val{font-size:26px;font-weight:900;}
 .stat-label{font-size:10px;color:var(--muted);margin-top:2px;}
+.stat-hint{font-size:9px;color:var(--muted);margin-top:3px;opacity:0;}
+.stat-card:hover .stat-hint{opacity:1;}
+.stat-card:hover{border-color:var(--green);cursor:pointer;transform:translateY(-1px);transition:all .15s;}
+.stat-active{border-color:var(--green) !important;box-shadow:0 0 0 2px rgba(0,168,107,.2) !important;}
 .s1 .stat-val{color:var(--navy);}
 .s2 .stat-val{color:var(--green);}
 .s3 .stat-val{color:var(--red);}
@@ -211,13 +215,33 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
     </div>
     {% endif %}
 
-    <!-- Stats -->
+    <!-- Stats — clickable to filter students -->
     <div class="stats-bar">
-      <div class="stat-card s1"><div class="stat-val">{{ stats.total }}</div><div class="stat-label">Total Students</div></div>
-      <div class="stat-card s2"><div class="stat-val">{{ stats.with_photo }}</div><div class="stat-label">With Photo</div></div>
-      <div class="stat-card s3"><div class="stat-val">{{ stats.missing_photo }}</div><div class="stat-label">Missing Photo</div></div>
-      <div class="stat-card s4"><div class="stat-val">{{ stats.id_printed }}</div><div class="stat-label">ID Printed</div></div>
-      <div class="stat-card s5"><div class="stat-val">{{ stats.id_distributed }}</div><div class="stat-label">ID Distributed</div></div>
+      <a href="/?filter=" class="stat-card s1 {{ 'stat-active' if not filter_type else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.total }}</div>
+        <div class="stat-label">Total Students</div>
+        <div class="stat-hint">Click to view all</div>
+      </a>
+      <a href="/?filter=with_photo" class="stat-card s2 {{ 'stat-active' if filter_type=='with_photo' else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.with_photo }}</div>
+        <div class="stat-label">With Photo</div>
+        <div class="stat-hint">Click to view</div>
+      </a>
+      <a href="/?filter=missing_photo" class="stat-card s3 {{ 'stat-active' if filter_type=='missing_photo' else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.missing_photo }}</div>
+        <div class="stat-label">Missing Photo</div>
+        <div class="stat-hint">Click to view</div>
+      </a>
+      <a href="/?filter=id_printed" class="stat-card s4 {{ 'stat-active' if filter_type=='id_printed' else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.id_printed }}</div>
+        <div class="stat-label">ID Printed</div>
+        <div class="stat-hint">Click to view</div>
+      </a>
+      <a href="/?filter=id_distributed" class="stat-card s5 {{ 'stat-active' if filter_type=='id_distributed' else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.id_distributed }}</div>
+        <div class="stat-label">ID Distributed</div>
+        <div class="stat-hint">Click to view</div>
+      </a>
     </div>
 
     <!-- Welcome card -->
@@ -235,6 +259,66 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
         <a href="https://docs.google.com/spreadsheets/d/1g8N8e3-fvPvYZFa6D76el8pyBMM5bv75DbWOMsWqvMU/copy" target="_blank" class="btn-ghost">📊 Open Google Sheets Template</a>
       </div>
     </div>
+
+    <!-- Filtered student list (shown when stat card is clicked) -->
+    {% if filter_type %}
+    <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;box-shadow:var(--shadow);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;">
+            {% if filter_type == 'missing_photo' %}❌ Students Missing Photo ({{ students|length }})
+            {% elif filter_type == 'with_photo' %}✅ Students With Photo ({{ students|length }})
+            {% elif filter_type == 'id_printed' %}🖨️ Students with ID Printed ({{ students|length }})
+            {% elif filter_type == 'id_distributed' %}📬 Students with ID Distributed ({{ students|length }})
+            {% else %}👥 All Students ({{ students|length }})
+            {% endif %}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Click a stat card above to change filter</div>
+        </div>
+        <a href="/" style="font-size:12px;color:var(--muted);text-decoration:none;">✕ Clear filter</a>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;min-width:600px;">
+          <thead>
+            <tr style="background:#f8fafc;border-bottom:1px solid var(--border);">
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">#</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Name</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">LRN</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Grade & Section</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Photo</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">ID Printed</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for s in students %}
+          <tr style="border-bottom:1px solid rgba(0,0,0,.04);">
+            <td style="padding:10px 12px;font-size:12px;color:var(--muted);">{{ loop.index }}</td>
+            <td style="padding:10px 12px;font-size:13px;font-weight:600;">
+              {{ s.last_name }}, {{ s.first_name }} {{ s.middle_initial or '' }}
+              {% if s.extension %} {{ s.extension }}{% endif %}
+            </td>
+            <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:var(--muted);">{{ s.lrn or '—' }}</td>
+            <td style="padding:10px 12px;font-size:12px;">{{ s.grade }} — {{ s.section_name }}</td>
+            <td style="padding:10px 12px;text-align:center;">
+              {% if s.photo_url %}
+                <img src="{{ s.photo_url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"/>
+              {% else %}
+                <span style="color:var(--red);font-size:16px;">❌</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px 12px;text-align:center;">
+              <span style="font-size:16px;">{{ '✅' if s.id_printed else '⬜' }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not students %}
+          <tr><td colspan="6" style="padding:30px;text-align:center;color:var(--muted);">No students found.</td></tr>
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Sections list -->
     <div class="sections-header">
@@ -271,10 +355,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
           <td>
             <div style="display:flex;gap:5px;align-items:center">
               <a href="/section/{{ sec.grade }}/{{ sec.section_name }}" class="btn btn-outline btn-sm">View →</a>
+              {% if is_admin %}
               <form method="POST" action="/delete_section/{{ sec.grade }}/{{ sec.section_name }}"
                     onsubmit="return confirm('Delete {{ sec.grade }} - {{ sec.section_name }} and ALL its students? This cannot be undone.')">
                 <button type="submit" class="btn btn-sm btn-red">🗑</button>
               </form>
+              {% else %}
+              <button type="button" class="btn btn-sm btn-red"
+                onclick="openPinModal('section','{{ sec.grade }}','{{ sec.section_name }}','')">🗑</button>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -302,6 +391,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="form-row">
         <label class="form-label">Your Full Name *</label>
         <input class="form-input" name="adviser_name" required placeholder="e.g. Maria Santos"/>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Section PIN (4-6 digits) *</label>
+        <input class="form-input" name="section_pin" required type="password"
+               minlength="4" maxlength="6" pattern="[0-9]{4,6}"
+               placeholder="Set a PIN to protect your section"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+          ⚠️ Remember this PIN — you will need it to delete students or your section. Keep it private!
+        </div>
       </div>
       <div class="form-row-2">
         <div>

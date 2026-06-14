@@ -432,6 +432,76 @@ tbody tr:hover{background:#f9fafb;}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function openAddStudent(){openModal('add-student-modal');}
+
+// ── Image compression ───────────────────────────────────────────
+function compressImage(file, maxW, maxH, quality, callback){
+  if(!file || !file.type.startsWith('image/')){ callback(file); return; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(w <= maxW && h <= maxH){ callback(file); return; }
+      var ratio = Math.min(maxW/w, maxH/h);
+      var nw = Math.round(w*ratio), nh = Math.round(h*ratio);
+      var canvas = document.createElement('canvas');
+      canvas.width = nw; canvas.height = nh;
+      canvas.getContext('2d').drawImage(img, 0, 0, nw, nh);
+      canvas.toBlob(function(blob){
+        var compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {type:'image/jpeg'});
+        callback(compressed);
+      }, 'image/jpeg', quality);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function replaceInputFile(input, file){
+  try {
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+  } catch(e){}
+}
+
+function submitPhotoForm(id){
+  var input = document.getElementById('photo-input-'+id);
+  var file  = input.files[0];
+  if(!file) return;
+  compressImage(file, 800, 800, 0.85, function(compressed){
+    var formData = new FormData();
+    formData.append('photo', compressed);
+    fetch('/upload_photo/'+id, {method:'POST', body:formData})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(data.success){
+          var el = document.getElementById('photo-'+id);
+          if(el.tagName==='IMG'){ el.src = data.photo_url+'?t='+Date.now(); }
+          else {
+            var img = document.createElement('img');
+            img.src = data.photo_url; img.className='student-photo'; img.id='photo-'+id;
+            el.parentNode.replaceChild(img, el);
+          }
+        }
+      });
+  });
+}
+
+function previewPhoto(input, previewId, iconId){
+  var file = input.files[0]; if(!file) return;
+  compressImage(file, 800, 800, 0.85, function(compressed){
+    replaceInputFile(input, compressed);
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var p = document.getElementById(previewId);
+      if(p){ p.src = e.target.result; p.style.display='block'; }
+      var icon = document.getElementById(iconId);
+      if(icon) icon.style.display='none';
+    };
+    reader.readAsDataURL(compressed);
+  });
+}
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
 
 function openEditStudent(id){
@@ -461,23 +531,7 @@ function previewPhoto(input,previewId,iconId){
   };reader.readAsDataURL(file);
 }
 
-function submitPhotoForm(id){
-  const form=document.getElementById('photo-form-'+id);
-  const formData=new FormData(form);
-  fetch('/upload_photo/'+id,{method:'POST',body:formData})
-    .then(r=>r.json())
-    .then(data=>{
-      if(data.success){
-        const el=document.getElementById('photo-'+id);
-        if(el.tagName==='IMG'){el.src=data.photo_url;}
-        else{
-          const img=document.createElement('img');
-          img.src=data.photo_url;img.className='student-photo';img.id='photo-'+id;
-          el.parentNode.replaceChild(img,el);
-        }
-      }
-    });
-}
+
 
 function updateStatus(id,field,value){
   const formData=new FormData();

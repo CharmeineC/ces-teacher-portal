@@ -415,8 +415,12 @@ tbody tr:hover{background:#f9fafb;}
     <form method="POST" action="/bulk_import" enctype="multipart/form-data">
       <input type="hidden" name="grade" value="{{ section.grade if section else '' }}"/>
       <input type="hidden" name="section_name" value="{{ section.section_name if section else '' }}"/>
-      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#dc2626;line-height:1.6;">
-        ⚠️ <strong>Use Google Sheets, NOT Excel!</strong> Excel converts LRN numbers to scientific notation causing errors.
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#dc2626;line-height:1.7;">
+        ⚠️ <strong>IMPORTANT — Before entering LRN numbers in Google Sheets:</strong><br/>
+        1. Click the letter <strong>A</strong> at the top of the column<br/>
+        2. Click <strong>Format → Number → Plain text</strong><br/>
+        3. THEN type your LRN numbers<br/>
+        If you already entered LRNs without doing this, delete them and re-enter after formatting.
       </div>
       <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#065f46;line-height:1.7;">
         All students will be added to <strong>{{ section.grade if section else '' }} — {{ section.section_name if section else '' }}</strong><br/>

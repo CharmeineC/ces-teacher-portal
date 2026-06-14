@@ -199,7 +199,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
     {% endfor %}
     <div class="sidebar-bottom">
       <a href="/download_csv" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;margin-bottom:8px;">⬇ Export All CSV</a>
-      <a href="/download_template_csv" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;">📄 CSV Template</a>
+      <button onclick="openModal('gsheet-modal')" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;">📊 Google Sheets Template</button>
     </div>
   </div>
 
@@ -226,13 +226,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="welcome-sub">Follow these steps to submit your class information.</div>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-text">Click "Add My Class", enter your name, grade, section and upload your signature</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text">Download the CSV template, fill in your students and upload it</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Open the Google Sheets template, fill in your students, download as CSV and upload</div></div>
         <div class="step"><div class="step-num">3</div><div class="step-text">Students appear automatically in your section!</div></div>
         <div class="step"><div class="step-num">4</div><div class="step-text">Upload each student's photo individually by clicking the 📷 camera icon on their row</div></div>
       </div>
       <div class="welcome-actions">
         <button class="btn-white" onclick="openModal('add-class-modal')">+ Add My Class</button>
-        <a href="/download_template_csv" class="btn-ghost">⬇ Download CSV Template</a>
+        <button class="btn-ghost" onclick="openGSheetTemplate()">📊 Open Google Sheets Template</button>
       </div>
     </div>
 
@@ -290,6 +290,74 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
   </div>
 </div>
 
+<!-- GOOGLE SHEETS TEMPLATE MODAL -->
+<div class="modal-backdrop" id="gsheet-modal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-title">📊 Create Your Student List in Google Sheets</div>
+    <div class="modal-sub">Follow these steps — a new Google Sheet has already been opened for you!</div>
+
+    <!-- Warning -->
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#dc2626;line-height:1.6;">
+      ⚠️ <strong>Do NOT use Microsoft Excel!</strong> Excel converts 12-digit LRN numbers to scientific notation (e.g. 123456789001 → 1.23E+11), causing all students to get the same LRN and only 1 student gets saved.
+    </div>
+
+    <!-- Step 1: Headers already copied -->
+    <div style="background:var(--green-light);border:1px solid var(--green-mid);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:8px;">Step 1 — Paste the headers into your Google Sheet</div>
+      <div style="font-size:12px;color:var(--green-dark);margin-bottom:10px;">The column headers have been copied to your clipboard. Click on cell <strong>A1</strong> in your Google Sheet and press <strong>Ctrl+V</strong> (or Cmd+V on Mac) to paste.</div>
+      <div style="background:white;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:var(--navy);margin-bottom:10px;word-break:break-all;">
+        lrn &nbsp;|&nbsp; last_name &nbsp;|&nbsp; first_name &nbsp;|&nbsp; middle_initial &nbsp;|&nbsp; extension &nbsp;|&nbsp; emergency_contact_name &nbsp;|&nbsp; emergency_contact_address &nbsp;|&nbsp; emergency_contact_number
+      </div>
+      <button onclick="copyHeaders()" id="copy-btn"
+        style="background:var(--green);color:white;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;width:100%;">
+        📋 Copy Headers Again
+      </button>
+    </div>
+
+    <!-- Steps 2-5 -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+        <div style="font-size:13px;line-height:1.6;">
+          <strong>Format the LRN column as Plain Text (very important!)</strong><br/>
+          Click the letter <strong>A</strong> at the top → <strong>Format</strong> menu → <strong>Number</strong> → <strong>Plain text</strong>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+        <div style="font-size:13px;line-height:1.6;">
+          Fill in your students starting from <strong>Row 2</strong>. One student per row. Each student must have a <strong>unique LRN</strong>.
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+        <div style="font-size:13px;line-height:1.6;">
+          When done: <strong>File → Download → Comma Separated Values (.csv)</strong>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:white;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
+        <div style="font-size:13px;line-height:1.6;">
+          Come back here → go to your section → click <strong>"⬆ Import CSV"</strong> to upload.
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;">
+      <a href="https://sheets.new" target="_blank"
+         style="font-size:12px;color:var(--green);font-weight:600;text-decoration:none;">
+        📊 Open another Google Sheet →
+      </a>
+      <button type="button" class="btn btn-green" onclick="closeModal('gsheet-modal')">Got it! ✓</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD MY CLASS MODAL -->
 <div class="modal-backdrop" id="add-class-modal">
   <div class="modal">
@@ -331,7 +399,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="form-row">
         <label class="form-label">Student CSV File</label>
         <input class="form-input" type="file" name="csv_file" accept=".csv"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px"><a href="/download_template_csv" style="color:var(--green)">⬇ Download template</a></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px"><a href="#" onclick="event.preventDefault();closeModal('add-class-modal');openModal('gsheet-modal');" style="color:var(--green)">📊 How to create the CSV correctly</a></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-cancel" onclick="closeModal('add-class-modal')">Cancel</button>
@@ -360,7 +428,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="form-row">
         <label class="form-label">CSV File *</label>
         <input class="form-input" type="file" name="file" accept=".csv" required/>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px"><a href="/download_template_csv" style="color:var(--green)">⬇ Download template</a></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px"><a href="#" onclick="event.preventDefault();closeModal('add-class-modal');openModal('gsheet-modal');" style="color:var(--green)">📊 How to create the CSV correctly</a></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-cancel" onclick="closeModal('bulk-import-modal')">Cancel</button>
@@ -386,6 +454,40 @@ function updateImportGrade(sel){
   var opt=sel.options[sel.selectedIndex];
   document.getElementById('import-grade').value=opt.dataset.grade||'';
 }
+function openGSheetTemplate(){
+  // Copy headers to clipboard
+  copyHeaders();
+  // Open new Google Sheet in new tab
+  window.open('https://sheets.new', '_blank');
+  // Show instructions modal
+  openModal('gsheet-modal');
+}
+
+function copyHeaders(){
+  var headers = 'lrn	last_name	first_name	middle_initial	extension	emergency_contact_name	emergency_contact_address	emergency_contact_number';
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(headers).then(function(){
+      var btn = document.getElementById('copy-btn');
+      if(btn){
+        btn.textContent = '✅ Headers Copied!';
+        btn.style.background = '#065f46';
+        setTimeout(function(){ 
+          btn.textContent = '📋 Copy Headers Again'; 
+          btn.style.background = 'var(--green)';
+        }, 2000);
+      }
+    });
+  } else {
+    // Fallback for older browsers
+    var ta = document.createElement('textarea');
+    ta.value = headers;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
 function previewSig(input){
   var file=input.files[0];if(!file)return;
   var reader=new FileReader();

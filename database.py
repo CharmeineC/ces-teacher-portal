@@ -394,7 +394,7 @@ def export_students_csv(grade=None, section_name=None):
 
 
 def get_dashboard_stats():
-    """Comprehensive stats for the dashboard."""
+    """Comprehensive stats for the dashboard — JOINs sections table for correct adviser/signature."""
     conn = get_connection()
 
     total = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
@@ -408,7 +408,6 @@ def get_dashboard_stats():
         "SELECT COUNT(*) FROM students WHERE id_distributed=1"
     ).fetchone()[0]
 
-    # Complete info = has LRN, first_name, last_name, emergency_contact_number
     complete = conn.execute("""
         SELECT COUNT(*) FROM students
         WHERE lrn != '' AND lrn IS NOT NULL
@@ -428,17 +427,47 @@ def get_dashboard_stats():
         ORDER BY grade
     """).fetchall()
 
-    # Per section breakdown
+    # Per section breakdown — LEFT JOIN sections to get adviser/signature
     section_stats = conn.execute("""
-        SELECT grade, section_name,
-               COUNT(*) as total,
-               SUM(CASE WHEN photo_url != '' AND photo_url IS NOT NULL THEN 1 ELSE 0 END) as with_photo,
-               SUM(CASE WHEN id_printed=1 THEN 1 ELSE 0 END) as printed,
-               SUM(CASE WHEN lrn != '' AND lrn IS NOT NULL THEN 1 ELSE 0 END) as with_lrn
-        FROM students
-        GROUP BY grade, section_name
-        ORDER BY grade, section_name
+        SELECT 
+            st.grade, 
+            st.section_name,
+            COUNT(*) as total,
+            SUM(CASE WHEN st.photo_url != '' AND st.photo_url IS NOT NULL THEN 1 ELSE 0 END) as with_photo,
+            SUM(CASE WHEN st.id_printed=1 THEN 1 ELSE 0 END) as printed,
+            SUM(CASE WHEN st.lrn != '' AND st.lrn IS NOT NULL THEN 1 ELSE 0 END) as with_lrn,
+            COALESCE(sec.adviser_name, st.adviser_name, '') as adviser_name,
+            COALESCE(sec.adviser_signature, '') as adviser_signature
+        FROM students st
+        LEFT JOIN sections sec 
+            ON LOWER(sec.grade) = LOWER(st.grade) 
+            AND LOWER(sec.section_name) = LOWER(st.section_name)
+        GROUP BY st.grade, st.section_name
+        ORDER BY st.grade, st.section_name
     """).fetchall()
+
+    # Also include sections that have no students yet
+    empty_sections = conn.execute("""
+        SELECT 
+            sec.grade,
+            sec.section_name,
+            0 as total,
+            0 as with_photo,
+            0 as printed,
+            0 as with_lrn,
+            sec.adviser_name,
+            COALESCE(sec.adviser_signature, '') as adviser_signature
+        FROM sections sec
+        WHERE NOT EXISTS (
+            SELECT 1 FROM students st 
+            WHERE LOWER(st.grade)=LOWER(sec.grade) 
+            AND LOWER(st.section_name)=LOWER(sec.section_name)
+        )
+        ORDER BY sec.grade, sec.section_name
+    """).fetchall()
+
+    all_sections = [dict(r) for r in section_stats] + [dict(r) for r in empty_sections]
+    all_sections.sort(key=lambda x: (x['grade'], x['section_name']))
 
     conn.close()
     return {
@@ -451,7 +480,7 @@ def get_dashboard_stats():
         "id_distributed":   id_distributed,
         "pending_print":    total - id_printed,
         "grade_stats":      [dict(r) for r in grade_stats],
-        "section_stats":    [dict(r) for r in section_stats],
+        "section_stats":    all_sections,
     }
 
 
@@ -510,3 +539,40 @@ def auto_create_sections_from_students():
 
     conn.commit()
     conn.close()
+
+
+def delete_section(grade, section_name):
+    """Delete a section and all its students."""
+    conn = get_connection()
+    try:
+        # Delete students first
+        conn.execute(
+            "DELETE FROM students WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)",
+            (grade, section_name)
+        )
+        # Delete section
+        conn.execute(
+            "DELETE FROM sections WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)",
+            (grade, section_name)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting section: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def delete_student(student_id):
+    """Delete a single student."""
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM students WHERE id=?", (student_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting student: {e}")
+        return False
+    finally:
+        conn.close()

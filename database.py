@@ -35,7 +35,7 @@ def setup_database():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS students (
             id                        INTEGER PRIMARY KEY AUTOINCREMENT,
-            lrn                       TEXT UNIQUE,
+            lrn                       TEXT,
             first_name                TEXT NOT NULL,
             last_name                 TEXT NOT NULL,
             middle_initial            TEXT,
@@ -53,6 +53,15 @@ def setup_database():
             updated_at                TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
+    # Add unique index on (lrn, section_name) — same student can be in multiple sections
+    try:
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_lrn_section 
+            ON students(lrn, section_name) 
+            WHERE lrn != '' AND lrn IS NOT NULL
+        """)
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
@@ -286,24 +295,26 @@ def bulk_import_students(students_list):
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+            section = s.get("section_name","").strip()
+
             if lrn:
-                # Check if student with this LRN already exists
+                # Check if student with this EXACT LRN + section combo exists
                 existing = conn.execute(
-                    "SELECT id FROM students WHERE lrn=?", (lrn,)
+                    "SELECT id FROM students WHERE lrn=? AND LOWER(section_name)=LOWER(?)",
+                    (lrn, section)
                 ).fetchone()
             else:
                 existing = None
 
             if existing:
-                # UPDATE only contact/name info — NEVER overwrite grade/section
-                # This prevents students from being moved between sections accidentally
+                # UPDATE info for this student in this section
                 conn.execute("""
                     UPDATE students SET
                         first_name=?, last_name=?, middle_initial=?,
                         extension=?, adviser_name=?,
                         emergency_contact_name=?, emergency_contact_address=?,
                         emergency_contact_number=?, updated_at=?
-                    WHERE lrn=?
+                    WHERE lrn=? AND LOWER(section_name)=LOWER(?)
                 """, (
                     s.get("first_name","").strip(),
                     s.get("last_name","").strip(),
@@ -313,7 +324,7 @@ def bulk_import_students(students_list):
                     s.get("emergency_contact_name","").strip(),
                     s.get("emergency_contact_address","").strip(),
                     s.get("emergency_contact_number","").strip(),
-                    now, lrn
+                    now, lrn, section
                 ))
                 conn.commit()
                 updated += 1

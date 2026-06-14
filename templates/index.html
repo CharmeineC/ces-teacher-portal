@@ -165,7 +165,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 <div class="layout">
 
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="main-sidebar">
     <div class="sidebar-section">
       <div class="sidebar-title">Filter by Grade & Section</div>
       <a href="/" class="nav-item {{ 'active' if not selected_grade }}">
@@ -392,10 +392,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 
 <script>
 function toggleSidebar(){
-  const sidebar = document.querySelector('.sidebar');
+  const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
-  sidebar.classList.toggle('open');
-  overlay.classList.toggle('open');
+  if(sidebar){
+    sidebar.classList.toggle('open');
+  }
+  if(overlay){
+    overlay.classList.toggle('open');
+  }
 }
 
 function openModal(id){document.getElementById(id).classList.add('open');}

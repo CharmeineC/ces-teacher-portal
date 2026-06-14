@@ -13,7 +13,7 @@
   --text:#1a1d2e;--muted:#6b7280;--shadow:0 2px 12px rgba(0,0,0,.07);
 }
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
-.topbar{background:var(--navy);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.topbar{background:#007a4d;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.2);}
 .school-name{font-size:16px;font-weight:800;color:white;}
 .school-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;}
 .topbar-right{display:flex;align-items:center;gap:10px;}
@@ -73,6 +73,33 @@ tbody tr:hover{background:#f9fafb;}
 .photo-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;}
 .photo-upload-zone:hover{border-color:var(--blue);}
 .photo-hint{font-size:12px;color:var(--muted);}
+
+/* ── Mobile Responsive ── */
+@media(max-width:768px){
+  .topbar{padding:10px 14px;}
+  .content{padding:14px;max-width:100%;}
+  .page-header{grid-template-columns:1fr;gap:12px;}
+  .page-header > div:last-child{display:flex;gap:8px;flex-wrap:wrap;}
+  .section-title{font-size:18px;}
+  .adviser-card{flex-direction:column;gap:12px;}
+  .adviser-sig{width:100%;max-width:200px;}
+  .adviser-no-sig{width:100%;max-width:200px;}
+  .stat-row{gap:6px;}
+  .stat-pill{font-size:10px;padding:3px 8px;}
+  .table-wrap{overflow-x:auto;}
+  table{min-width:650px;}
+  .modal{max-width:100%;margin:0;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:85vh;}
+  .modal-backdrop{align-items:flex-end;padding:0;}
+  .form-row-2,.form-row-3{grid-template-columns:1fr;}
+  .btn{padding:8px 12px;font-size:12px;}
+}
+
+@media(max-width:420px){
+  .section-title{font-size:16px;}
+  .page-header > div:last-child{flex-direction:column;}
+  .page-header > div:last-child a,
+  .page-header > div:last-child button{width:100%;justify-content:center;}
+}
 </style>
 </head>
 <body>
@@ -103,9 +130,11 @@ tbody tr:hover{background:#f9fafb;}
       <div class="section-grade">{{ section.grade }}</div>
       <div class="section-title">{{ section.section_name }}</div>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <a href="/download_csv?grade={{ section.grade }}&section={{ section.section_name }}"
          class="btn btn-outline">⬇ Export CSV</a>
+      <a href="/download_photos_zip/{{ section.grade }}/{{ section.section_name }}"
+         class="btn btn-outline">📦 Download All Photos</a>
       <button class="btn btn-navy" onclick="openAddStudent()">+ Add Student</button>
     </div>
   </div>
@@ -215,11 +244,16 @@ tbody tr:hover{background:#f9fafb;}
             {% endif %}
           </td>
           <td>
-            {% if not s.id_printed %}
-              <button class="btn btn-outline btn-sm" onclick="openEditStudent({{ s.id }})">✏️</button>
-            {% else %}
-              <span style="font-size:11px;color:var(--muted)">Locked</span>
-            {% endif %}
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              {% if s.photo_url %}
+              <a href="/download_photo/{{ s.id }}" class="btn btn-outline btn-sm" title="Download photo">⬇</a>
+              {% endif %}
+              {% if not s.id_printed %}
+                <button class="btn btn-outline btn-sm" onclick="openEditStudent({{ s.id }})">✏️</button>
+              {% else %}
+                <span style="font-size:11px;color:var(--muted)">Locked</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}

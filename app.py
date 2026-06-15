@@ -503,10 +503,12 @@ def api_stats():
 @app.route("/section/<grade>/<section_name>")
 def section_detail(grade, section_name):
     """Section detail page — shows adviser info, signature, and all students."""
-    from database import get_section_detail, get_dashboard_stats, auto_create_sections_from_students
-    # Auto-create section if it came from CSV but not manually added
+    from database import get_section_detail, get_dashboard_stats, auto_create_sections_from_students, get_section
     auto_create_sections_from_students()
     section, students = get_section_detail(grade, section_name)
+    # Get full section info including PIN for admin view
+    if not section:
+        section = get_section(grade, section_name)
     stats = get_dashboard_stats()
     sections = get_all_sections()
     grades = get_all_grades()

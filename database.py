@@ -383,9 +383,39 @@ def get_stats():
 
 
 def export_students_csv(grade=None, section_name=None):
-    """Export students as CSV string for download."""
+    """
+    Export students as CSV — includes section PIN and adviser signature URL
+    so everything can be fully restored from this one file.
+    """
     import csv, io
-    students = get_students(grade, section_name)
+    conn = get_connection()
+
+    # JOIN students with sections to get PIN and signature
+    query = """
+        SELECT
+            st.lrn, st.last_name, st.first_name, st.middle_initial, st.extension,
+            st.grade, st.section_name, st.adviser_name,
+            st.emergency_contact_name, st.emergency_contact_address,
+            st.emergency_contact_number, st.photo_url,
+            st.id_printed, st.id_distributed,
+            COALESCE(sec.adviser_signature, '') as adviser_signature,
+            COALESCE(sec.section_pin, '')       as section_pin
+        FROM students st
+        LEFT JOIN sections sec
+            ON LOWER(sec.grade)=LOWER(st.grade)
+            AND LOWER(sec.section_name)=LOWER(st.section_name)
+        WHERE 1=1
+    """
+    params = []
+    if grade:
+        query += " AND st.grade=?"; params.append(grade)
+    if section_name:
+        query += " AND st.section_name=?"; params.append(section_name)
+    query += " ORDER BY st.grade, st.section_name, st.last_name, st.first_name"
+
+    students = conn.execute(query, params).fetchall()
+    conn.close()
+
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
@@ -393,7 +423,8 @@ def export_students_csv(grade=None, section_name=None):
         "grade", "section_name", "adviser_name",
         "emergency_contact_name", "emergency_contact_address",
         "emergency_contact_number", "photo_url",
-        "id_printed", "id_distributed"
+        "id_printed", "id_distributed",
+        "adviser_signature", "section_pin"
     ])
     for s in students:
         writer.writerow([
@@ -404,6 +435,8 @@ def export_students_csv(grade=None, section_name=None):
             s["emergency_contact_number"], s["photo_url"] or "",
             "Yes" if s["id_printed"] else "No",
             "Yes" if s["id_distributed"] else "No",
+            s["adviser_signature"] or "",
+            s["section_pin"] or "",
         ])
     return output.getvalue()
 

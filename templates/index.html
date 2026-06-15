@@ -205,7 +205,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <a href="/download_csv" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;margin-bottom:8px;">⬇ Export All CSV</a>
       <a href="https://docs.google.com/spreadsheets/d/1g8N8e3-fvPvYZFa6D76el8pyBMM5bv75DbWOMsWqvMU/copy" target="_blank" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;margin-bottom:8px;">📊 Google Sheets Template</a>
       {% if is_admin %}
-      <button onclick="showRestoreModal()" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;background:#fffbeb;border-color:#fcd34d;color:#92400e;">⚠️ Restore from Backup</button>
+      <a href="/admin/restore" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;background:#fffbeb;border-color:#fcd34d;color:#92400e;text-decoration:none;">⚠️ Restore from Backup</a>
       {% endif %}
     </div>
   </div>

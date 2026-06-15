@@ -850,13 +850,23 @@ def admin_bulk_restore():
         return redirect(url_for("index", msg="No file selected", success="0"))
 
     try:
+        from database import get_connection
         raw  = f.stream.read()
+        print(f"Restore: received {len(raw)} bytes")
+        decoded = None
         for enc in ("utf-8-sig", "utf-8", "latin-1"):
-            try: decoded = raw.decode(enc); break
+            try:
+                decoded = raw.decode(enc)
+                print(f"Restore: decoded with {enc}")
+                break
             except: continue
+
+        if not decoded:
+            return redirect(url_for("index", msg="Could not read file", success="0"))
 
         stream  = io.StringIO(decoded)
         reader  = csv.DictReader(stream)
+        print(f"Restore: CSV headers = {reader.fieldnames}")
         students = []
         for row in reader:
             row_norm = {k.lower().strip().replace(" ","_"): v for k, v in row.items() if k}

@@ -836,6 +836,14 @@ def route_delete_student(student_id):
                             success="1"))
 
 
+@app.route("/admin/restore")
+def admin_restore_page():
+    """Show restore page."""
+    if not is_admin():
+        return redirect(url_for("index", msg="Admin access required", success="0"))
+    return render_template("restore.html", school_name=SCHOOL_NAME)
+
+
 @app.route("/admin/bulk_restore", methods=["POST"])
 def admin_bulk_restore():
     """Admin only — restore all students from full exported CSV."""

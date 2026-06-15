@@ -46,13 +46,12 @@ def allowed_image(filename):
 def upload_photo(file, grade="", section_name="", student_name=""):
     """
     Save photo and return URL.
-    Priority: Google Drive → local storage fallback
+    Priority: Cloudinary → local storage fallback
     """
     if not file or not file.filename:
         return ""
 
     import time
-    from google_drive import is_configured, upload_photo as gd_upload
 
     # Build clean filename
     if student_name:
@@ -66,7 +65,7 @@ def upload_photo(file, grade="", section_name="", student_name=""):
         ext = "jpg"
     filename = f"{clean_name}.{ext}"
 
-    # Read file content ONCE at the very start
+    # Read file content once
     try:
         file_content = file.read()
     except Exception as e:
@@ -74,23 +73,40 @@ def upload_photo(file, grade="", section_name="", student_name=""):
         return ""
 
     if not file_content:
-        print("File content is empty!")
+        print("Upload: file content is empty!")
         return ""
 
-    mime_type = getattr(file, "content_type", None) or "image/jpeg"
-    print(f"Upload: {filename}, size={len(file_content)} bytes, type={mime_type}, grade={grade}, section={section_name}")
+    print(f"Upload: {filename} {len(file_content)} bytes grade={grade} section={section_name}")
 
-    # Try Google Drive first
-    if is_configured():
+    # Try Cloudinary first
+    cloudinary_url = os.environ.get("CLOUDINARY_URL")
+    if cloudinary_url:
         try:
-            url = gd_upload(file_content, filename, grade, section_name, mime_type)
+            import cloudinary
+            import cloudinary.uploader
+            import io as _io
+
+            # Folder organized by grade/section
+            grade_c   = (grade or "general").replace(" ","").replace("/","-")
+            section_c = (section_name or "general").replace(" ","").replace("/","-")
+            folder    = f"ces_portal/{grade_c}-{section_c}"
+
+            result = cloudinary.uploader.upload(
+                _io.BytesIO(file_content),
+                folder=folder,
+                public_id=clean_name,
+                overwrite=True,
+                resource_type="image"
+            )
+            url = result.get("secure_url","")
             if url:
-                print(f"Google Drive upload success: {url}")
+                print(f"Cloudinary upload success: {url}")
                 return url
             else:
-                print("Google Drive upload returned None — falling back to local")
+                print("Cloudinary returned no URL")
         except Exception as e:
-            print(f"Google Drive upload error: {e}")
+            print(f"Cloudinary upload error: {e}")
+            import traceback; traceback.print_exc()
 
     # Local storage fallback
     try:
@@ -103,11 +119,9 @@ def upload_photo(file, grade="", section_name="", student_name=""):
         return f"/static/uploads/{filename_local}"
     except Exception as e:
         print(f"Local upload failed: {e}")
-        # Last resort: return base64 data URL so image shows in browser
         try:
             import base64
             b64 = base64.b64encode(file_content).decode()
-            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
             return f"data:image/{ext};base64,{b64}"
         except Exception:
             return ""
@@ -820,6 +834,159 @@ def route_delete_student(student_id):
                             section_name=section,
                             msg="Student deleted.",
                             success="1"))
+
+
+@app.route("/admin/bulk_restore", methods=["POST"])
+def admin_bulk_restore():
+    """Admin only — restore all students from full exported CSV."""
+    if not is_admin():
+        return redirect(url_for("index", msg="Admin access required", success="0"))
+
+    if "file" not in request.files:
+        return redirect(url_for("index", msg="No file selected", success="0"))
+
+    f = request.files["file"]
+    if not f or not f.filename:
+        return redirect(url_for("index", msg="No file selected", success="0"))
+
+    try:
+        raw  = f.stream.read()
+        for enc in ("utf-8-sig", "utf-8", "latin-1"):
+            try: decoded = raw.decode(enc); break
+            except: continue
+
+        stream  = io.StringIO(decoded)
+        reader  = csv.DictReader(stream)
+        students = []
+        for row in reader:
+            row_norm = {k.lower().strip().replace(" ","_"): v for k, v in row.items() if k}
+            raw_lrn  = str(row_norm.get("lrn") or "").strip()
+            try:
+                if raw_lrn and ('e' in raw_lrn.lower() or '.' in raw_lrn):
+                    raw_lrn = str(int(float(raw_lrn)))
+            except Exception:
+                pass
+
+            # Handle id_printed/distributed from export
+            def yn(val):
+                return 1 if str(val).strip().lower() in ("yes","1","true") else 0
+
+            s = {
+                "lrn":                       raw_lrn,
+                "first_name":                str(row_norm.get("first_name") or "").strip(),
+                "last_name":                 str(row_norm.get("last_name") or "").strip(),
+                "middle_initial":            str(row_norm.get("middle_initial") or "").strip(),
+                "extension":                 str(row_norm.get("extension") or "").strip(),
+                "grade":                     str(row_norm.get("grade") or "").strip(),
+                "section_name":              str(row_norm.get("section_name") or "").strip(),
+                "adviser_name":              str(row_norm.get("adviser_name") or "").strip(),
+                "emergency_contact_name":    str(row_norm.get("emergency_contact_name") or "").strip(),
+                "emergency_contact_address": str(row_norm.get("emergency_contact_address") or "").strip(),
+                "emergency_contact_number":  str(row_norm.get("emergency_contact_number") or "").strip(),
+                "photo_url":                 str(row_norm.get("photo_url") or "").strip(),
+                "id_printed":                yn(row_norm.get("id_printed")),
+                "id_distributed":            yn(row_norm.get("id_distributed")),
+                "adviser_signature":         str(row_norm.get("adviser_signature") or "").strip(),
+                "section_pin":               str(row_norm.get("section_pin") or "").strip(),
+            }
+            if s["first_name"] or s["last_name"]:
+                students.append(s)
+
+        if not students:
+            return redirect(url_for("index", msg="No students found in CSV", success="0"))
+
+        # Restore students with photo_url and id status preserved
+        from database import get_connection
+        from datetime import datetime
+        conn = get_connection()
+        added = 0; updated = 0
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for s in students:
+            lrn     = s["lrn"]
+            section = s["section_name"]
+            existing = None
+            if lrn:
+                existing = conn.execute(
+                    "SELECT id FROM students WHERE lrn=? AND LOWER(section_name)=LOWER(?)",
+                    (lrn, section)
+                ).fetchone()
+            if existing:
+                conn.execute("""
+                    UPDATE students SET
+                        first_name=?, last_name=?, middle_initial=?, extension=?,
+                        grade=?, section_name=?, adviser_name=?,
+                        emergency_contact_name=?, emergency_contact_address=?,
+                        emergency_contact_number=?, photo_url=?,
+                        id_printed=?, id_distributed=?, updated_at=?
+                    WHERE lrn=? AND LOWER(section_name)=LOWER(?)
+                """, (
+                    s["first_name"], s["last_name"], s["middle_initial"], s["extension"],
+                    s["grade"], s["section_name"], s["adviser_name"],
+                    s["emergency_contact_name"], s["emergency_contact_address"],
+                    s["emergency_contact_number"], s["photo_url"],
+                    s["id_printed"], s["id_distributed"], now,
+                    lrn, section
+                ))
+                updated += 1
+            else:
+                conn.execute("""
+                    INSERT INTO students (
+                        lrn, first_name, last_name, middle_initial, extension,
+                        grade, section_name, adviser_name,
+                        emergency_contact_name, emergency_contact_address,
+                        emergency_contact_number, photo_url,
+                        id_printed, id_distributed, created_at, updated_at
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """, (
+                    lrn, s["first_name"], s["last_name"], s["middle_initial"], s["extension"],
+                    s["grade"], s["section_name"], s["adviser_name"],
+                    s["emergency_contact_name"], s["emergency_contact_address"],
+                    s["emergency_contact_number"], s["photo_url"],
+                    s["id_printed"], s["id_distributed"], now, now
+                ))
+                added += 1
+        conn.commit()
+        conn.close()
+
+        # Restore sections WITH signatures and PINs
+        conn2 = get_connection()
+        sections_restored = set()
+        for s in students:
+            key = (s["grade"], s["section_name"])
+            if key not in sections_restored and s["grade"] and s["section_name"]:
+                existing_sec = conn2.execute(
+                    "SELECT id FROM sections WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)",
+                    (s["grade"], s["section_name"])
+                ).fetchone()
+                sig = s.get("adviser_signature","") or ""
+                pin = s.get("section_pin","") or ""
+                if existing_sec:
+                    # Update PIN and signature if they were in the backup
+                    if sig or pin:
+                        conn2.execute("""
+                            UPDATE sections SET adviser_name=?,
+                            adviser_signature=CASE WHEN ?!='' THEN ? ELSE adviser_signature END,
+                            section_pin=CASE WHEN ?!='' THEN ? ELSE section_pin END
+                            WHERE LOWER(grade)=LOWER(?) AND LOWER(section_name)=LOWER(?)
+                        """, (s["adviser_name"], sig, sig, pin, pin, s["grade"], s["section_name"]))
+                else:
+                    conn2.execute("""
+                        INSERT OR IGNORE INTO sections
+                        (grade, section_name, adviser_name, adviser_signature, section_pin)
+                        VALUES (?,?,?,?,?)
+                    """, (s["grade"], s["section_name"], s["adviser_name"], sig, pin))
+                sections_restored.add(key)
+        conn2.commit()
+        conn2.close()
+
+        return redirect(url_for("index",
+            msg=f"✅ Restore complete! {added} students added, {updated} updated. "
+                f"{len(sections_restored)} sections restored with signatures and PINs.",
+            success="1"))
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return redirect(url_for("index", msg=f"Restore error: {str(e)}", success="0"))
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

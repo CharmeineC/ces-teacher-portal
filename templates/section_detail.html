@@ -181,8 +181,12 @@ tbody tr:hover{background:#f9fafb;}
         {% endif %}
       </div>
     </div>
-    <div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
       <button class="btn btn-outline btn-sm" onclick="openModal('update-adviser-modal')">✏️ Update adviser</button>
+      {% if is_admin %}
+      <button class="btn btn-outline btn-sm" onclick="openModal('admin-pin-modal')"
+              style="background:#fffbeb;border-color:#fcd34d;color:#92400e;">🔐 View/Reset PIN</button>
+      {% endif %}
     </div>
   </div>
 
@@ -442,6 +446,40 @@ tbody tr:hover{background:#f9fafb;}
   </div>
 </div>
 
+<!-- ADMIN PIN MODAL -->
+<div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;" id="admin-pin-modal">
+  <div style="background:white;border-radius:14px;padding:24px;width:100%;max-width:380px;">
+    <div style="font-size:16px;font-weight:800;color:#1a3c5e;margin-bottom:4px;">🔐 Section PIN (Admin View)</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">Only visible to admin. Keep this confidential.</div>
+
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:11px;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Current PIN for {{ section.section_name if section else '' }}</div>
+      <div style="font-size:32px;font-weight:900;letter-spacing:8px;color:#1a3c5e;font-family:monospace;">
+        {{ section.section_pin if section and section.section_pin else 'Not set' }}
+      </div>
+    </div>
+
+    <form method="POST" action="/add_section" enctype="multipart/form-data">
+      <input type="hidden" name="grade" value="{{ section.grade if section else '' }}"/>
+      <input type="hidden" name="section_name" value="{{ section.section_name if section else '' }}"/>
+      <input type="hidden" name="adviser_name" value="{{ section.adviser_name if section else '' }}"/>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block;font-weight:600;">Reset PIN (4-6 digits)</label>
+        <input type="password" name="section_pin"
+               placeholder="Enter new PIN to reset"
+               minlength="4" maxlength="6" pattern="[0-9]{4,6}"
+               style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:18px;letter-spacing:4px;text-align:center;outline:none;"/>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" onclick="document.getElementById('admin-pin-modal').style.display='none'"
+          style="background:transparent;color:#6b7280;border:1px solid #e5e7eb;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Close</button>
+        <button type="submit"
+          style="background:#00a86b;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Save New PIN</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- PIN MODAL -->
 <div style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;" id="pin-modal">
   <div style="background:white;border-radius:14px;padding:24px;width:100%;max-width:360px;">
@@ -468,8 +506,21 @@ tbody tr:hover{background:#f9fafb;}
 </div>
 
 <script>
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function openModal(id){
+  var el = document.getElementById(id);
+  if(el.classList !== undefined && el.style !== undefined){
+    // Try classList first (for backdrop modals)
+    if(el.classList.contains !== undefined){
+      el.classList.add('open');
+    }
+  }
+  el.style.display = 'flex';
+}
+function closeModal(id){
+  var el = document.getElementById(id);
+  el.classList.remove('open');
+  el.style.display = 'none';
+}
 function openAddStudent(){openModal('add-student-modal');}
 
 function openPinModal(type, grade, section, studentId){

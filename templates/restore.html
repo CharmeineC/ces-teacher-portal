@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Restore Data — {{ school_name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f5f6fa;font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:white;border-radius:16px;padding:32px;width:100%;max-width:500px;box-shadow:0 4px 24px rgba(0,0,0,.1);}
+.title{font-size:20px;font-weight:800;color:#1a3c5e;margin-bottom:6px;}
+.sub{font-size:13px;color:#6b7280;margin-bottom:20px;}
+.warn{background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#dc2626;line-height:1.7;}
+.info{background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:#065f46;line-height:1.8;}
+.label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block;font-weight:600;}
+input[type=file]{width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:13px;margin-bottom:20px;}
+.actions{display:flex;gap:10px;}
+.btn-green{background:#00a86b;color:white;border:none;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+.btn-back{background:transparent;color:#6b7280;border:1px solid #e5e7eb;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+  <div class="title">Restore All Data from Backup</div>
+  <div class="sub">Admin only — restores all students, sections, signatures and PINs.</div>
+
+  <div class="warn">
+    Only use a CSV exported from the <strong>"⬇ Export All CSV"</strong> button.<br/>
+    This will restore all data from the backup file.
+  </div>
+
+  <div class="info">
+    ✅ All sections recreated automatically<br/>
+    ✅ Student data restored to correct sections<br/>
+    ✅ Signatures restored (Cloudinary URLs)<br/>
+    ✅ PINs restored<br/>
+    ✅ ID printed/distributed status restored
+  </div>
+
+  <form method="POST" action="/admin/bulk_restore" enctype="multipart/form-data">
+    <label class="label">Select your backup CSV file</label>
+    <input type="file" name="file" accept=".csv" required/>
+    <div class="actions">
+      <a href="/" class="btn-back">← Cancel</a>
+      <button type="submit" class="btn-green">Restore Now</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

@@ -1006,6 +1006,185 @@ def admin_bulk_restore():
         import traceback; traceback.print_exc()
         return redirect(url_for("index", msg=f"Restore error: {str(e)}", success="0"))
 
+
+# ── TEACHER PROFILE ROUTES ────────────────────────────────────────────────────
+
+@app.route("/teachers")
+def teachers_page():
+    from database import get_all_teachers
+    search = request.args.get("search","")
+    teachers = get_all_teachers(search or None)
+    return render_template("teachers.html",
+                           teachers=teachers,
+                           search=search,
+                           school_name=SCHOOL_NAME,
+                           is_admin=is_admin())
+
+
+@app.route("/add_teacher", methods=["POST"])
+def route_add_teacher():
+    from database import add_teacher, update_teacher_photo
+    data = {
+        "last_name":      request.form.get("last_name","").strip(),
+        "first_name":     request.form.get("first_name","").strip(),
+        "middle_initial": request.form.get("middle_initial","").strip(),
+        "employee_no":    request.form.get("employee_no","").strip(),
+        "position":       request.form.get("position","").strip(),
+        "birth_date":     request.form.get("birth_date","").strip(),
+        "blood_type":     request.form.get("blood_type","").strip(),
+        "address":        request.form.get("address","").strip(),
+        "prc_number":     request.form.get("prc_number","").strip(),
+        "tin":            request.form.get("tin","").strip(),
+        "philhealth":     request.form.get("philhealth","").strip(),
+        "gsis":           request.form.get("gsis","").strip(),
+        "hdmf":           request.form.get("hdmf","").strip(),
+        "advisory_class": request.form.get("advisory_class","").strip(),
+        "ec_name":        request.form.get("ec_name","").strip(),
+        "ec_number":      request.form.get("ec_number","").strip(),
+    }
+    ok, status, teacher_id = add_teacher(data)
+
+    # Handle photo
+    if ok and teacher_id and "photo" in request.files:
+        photo_file = request.files["photo"]
+        if photo_file and photo_file.filename and allowed_image(photo_file.filename):
+            name = f"{data['last_name']}_{data['first_name']}"
+            photo_url = upload_photo(photo_file, grade="teachers",
+                                     section_name="profiles", student_name=name)
+            if photo_url:
+                update_teacher_photo(teacher_id, photo_url)
+
+    msg = f"Teacher {data['last_name']}, {data['first_name']} {'added' if status=='added' else 'updated'}!"
+    return redirect(url_for("teachers_page", msg=msg, success="1"))
+
+
+@app.route("/edit_teacher/<int:teacher_id>", methods=["POST"])
+def route_edit_teacher(teacher_id):
+    from database import add_teacher, get_teacher_by_id
+    teacher = get_teacher_by_id(teacher_id)
+    if not teacher:
+        return redirect(url_for("teachers_page", msg="Teacher not found", success="0"))
+    data = {
+        "last_name":      request.form.get("last_name","").strip(),
+        "first_name":     request.form.get("first_name","").strip(),
+        "middle_initial": request.form.get("middle_initial","").strip(),
+        "employee_no":    request.form.get("employee_no","").strip(),
+        "position":       request.form.get("position","").strip(),
+        "birth_date":     request.form.get("birth_date","").strip(),
+        "blood_type":     request.form.get("blood_type","").strip(),
+        "address":        request.form.get("address","").strip(),
+        "prc_number":     request.form.get("prc_number","").strip(),
+        "tin":            request.form.get("tin","").strip(),
+        "philhealth":     request.form.get("philhealth","").strip(),
+        "gsis":           request.form.get("gsis","").strip(),
+        "hdmf":           request.form.get("hdmf","").strip(),
+        "advisory_class": request.form.get("advisory_class","").strip(),
+        "ec_name":        request.form.get("ec_name","").strip(),
+        "ec_number":      request.form.get("ec_number","").strip(),
+    }
+    # Force update by using the existing employee_no if not provided
+    if not data["employee_no"] and teacher["employee_no"]:
+        data["employee_no"] = teacher["employee_no"]
+
+    add_teacher(data)
+    return redirect(url_for("teachers_page",
+                            msg=f"Teacher {data['last_name']}, {data['first_name']} updated!",
+                            success="1"))
+
+
+@app.route("/upload_teacher_photo/<int:teacher_id>", methods=["POST"])
+def route_upload_teacher_photo(teacher_id):
+    from database import get_teacher_by_id, update_teacher_photo
+    teacher = get_teacher_by_id(teacher_id)
+    if not teacher:
+        return jsonify({"success": False, "message": "Not found"})
+    if "photo" not in request.files:
+        return jsonify({"success": False, "message": "No file"})
+    photo_file = request.files["photo"]
+    if not photo_file or not photo_file.filename:
+        return jsonify({"success": False, "message": "No file selected"})
+    name = f"{teacher['last_name']}_{teacher['first_name']}"
+    photo_url = upload_photo(photo_file, grade="teachers",
+                             section_name="profiles", student_name=name)
+    if photo_url:
+        update_teacher_photo(teacher_id, photo_url)
+        return jsonify({"success": True, "photo_url": photo_url})
+    return jsonify({"success": False, "message": "Upload failed"})
+
+
+@app.route("/delete_teacher/<int:teacher_id>", methods=["POST"])
+def route_delete_teacher(teacher_id):
+    if not is_admin():
+        return redirect(url_for("teachers_page", msg="Admin only", success="0"))
+    from database import delete_teacher, get_teacher_by_id
+    t = get_teacher_by_id(teacher_id)
+    if t:
+        delete_teacher(teacher_id)
+        return redirect(url_for("teachers_page",
+                                msg=f"Teacher {t['last_name']}, {t['first_name']} deleted.",
+                                success="1"))
+    return redirect(url_for("teachers_page"))
+
+
+@app.route("/import_teachers", methods=["POST"])
+def route_import_teachers():
+    if not is_admin():
+        return redirect(url_for("teachers_page", msg="Admin only", success="0"))
+    if "file" not in request.files:
+        return redirect(url_for("teachers_page", msg="No file", success="0"))
+    f = request.files["file"]
+    try:
+        raw = f.stream.read()
+        for enc in ("utf-8-sig","utf-8","latin-1"):
+            try: decoded = raw.decode(enc); break
+            except: continue
+        stream = io.StringIO(decoded)
+        reader = csv.DictReader(stream)
+        rows = []
+        for row in reader:
+            rn = {k.lower().strip().replace(" ","_"): v for k,v in row.items() if k}
+            rows.append({
+                "last_name":      str(rn.get("last_name","")).strip(),
+                "first_name":     str(rn.get("first_name","")).strip(),
+                "middle_initial": str(rn.get("middle_initial","")).strip(),
+                "employee_no":    str(rn.get("employee_no","")).strip(),
+                "position":       str(rn.get("position","")).strip(),
+                "birth_date":     str(rn.get("birth_date","")).strip(),
+                "blood_type":     str(rn.get("blood_type","")).strip(),
+                "address":        str(rn.get("address","")).strip(),
+                "prc_number":     str(rn.get("prc_number","")).strip(),
+                "tin":            str(rn.get("tin","")).strip(),
+                "philhealth":     str(rn.get("philhealth","")).strip(),
+                "gsis":           str(rn.get("gsis","")).strip(),
+                "hdmf":           str(rn.get("hdmf","")).strip(),
+                "advisory_class": str(rn.get("advisory_class","")).strip(),
+                "ec_name":        str(rn.get("ec_name","")).strip(),
+                "ec_number":      str(rn.get("ec_number","")).strip(),
+            })
+        from database import bulk_import_teachers
+        added, updated, errors = bulk_import_teachers(rows)
+        msg = f"Done! {added} teachers added, {updated} updated."
+        if errors: msg += f" Issues: {'; '.join(errors[:3])}"
+        return redirect(url_for("teachers_page", msg=msg, success="1"))
+    except Exception as e:
+        return redirect(url_for("teachers_page", msg=f"Import error: {e}", success="0"))
+
+
+@app.route("/download_teachers_csv")
+def route_download_teachers_csv():
+    from database import export_teachers_csv
+    csv_data = export_teachers_csv()
+    return Response(csv_data, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=teachers.csv"})
+
+
+@app.route("/api/teacher/<int:teacher_id>")
+def api_teacher(teacher_id):
+    from database import get_teacher_by_id
+    t = get_teacher_by_id(teacher_id)
+    if not t: return jsonify({"error":"Not found"})
+    return jsonify(dict(t))
+
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

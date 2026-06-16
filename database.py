@@ -71,6 +71,19 @@ def setup_database():
 
     conn.commit()
     conn.close()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            last_name TEXT, first_name TEXT, middle_initial TEXT,
+            employee_no TEXT, position TEXT, birth_date TEXT, blood_type TEXT,
+            address TEXT, prc_number TEXT, tin TEXT, philhealth TEXT,
+            gsis TEXT, hdmf TEXT, advisory_class TEXT, photo_url TEXT,
+            ec_name TEXT, ec_number TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    conn.commit()
     print("✅ Teacher portal database ready.")
 
 
@@ -684,3 +697,180 @@ def verify_section_pin(grade, section_name, pin_input):
         return False, str(e)
     finally:
         conn.close()
+
+
+# ── TEACHER PROFILES ──────────────────────────────────────────────────────────
+
+def setup_teacher_profiles():
+    """Create teacher_profiles table if it doesn't exist."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_profiles (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            last_name       TEXT,
+            first_name      TEXT,
+            middle_initial  TEXT,
+            employee_no     TEXT,
+            position        TEXT,
+            birth_date      TEXT,
+            blood_type      TEXT,
+            address         TEXT,
+            prc_number      TEXT,
+            tin             TEXT,
+            philhealth      TEXT,
+            gsis            TEXT,
+            hdmf            TEXT,
+            advisory_class  TEXT,
+            photo_url       TEXT,
+            ec_name         TEXT,
+            ec_number       TEXT,
+            created_at      TEXT DEFAULT (datetime('now','localtime')),
+            updated_at      TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def get_all_teachers(search=None):
+    conn = get_connection()
+    query = "SELECT * FROM teacher_profiles WHERE 1=1"
+    params = []
+    if search:
+        query += " AND (first_name LIKE ? OR last_name LIKE ? OR employee_no LIKE ? OR position LIKE ?)"
+        params.extend([f"%{search}%"]*4)
+    query += " ORDER BY last_name, first_name"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return rows
+
+
+def get_teacher_by_id(teacher_id):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM teacher_profiles WHERE id=?", (teacher_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def get_teacher_by_employee_no(employee_no):
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM teacher_profiles WHERE employee_no=?", (employee_no,)).fetchone()
+    conn.close()
+    return row
+
+
+def add_teacher(data):
+    """Add or update teacher by employee_no."""
+    conn = get_connection()
+    try:
+        now = __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        emp = str(data.get("employee_no","")).strip()
+
+        existing = None
+        if emp:
+            existing = conn.execute(
+                "SELECT id FROM teacher_profiles WHERE employee_no=?", (emp,)
+            ).fetchone()
+
+        if existing:
+            conn.execute("""
+                UPDATE teacher_profiles SET
+                    last_name=?, first_name=?, middle_initial=?, employee_no=?,
+                    position=?, birth_date=?, blood_type=?, address=?,
+                    prc_number=?, tin=?, philhealth=?, gsis=?, hdmf=?,
+                    advisory_class=?, ec_name=?, ec_number=?, updated_at=?
+                WHERE id=?
+            """, (
+                data.get("last_name","").strip(), data.get("first_name","").strip(),
+                data.get("middle_initial","").strip(), emp,
+                data.get("position","").strip(), data.get("birth_date","").strip(),
+                data.get("blood_type","").strip(), data.get("address","").strip(),
+                data.get("prc_number","").strip(), data.get("tin","").strip(),
+                data.get("philhealth","").strip(), data.get("gsis","").strip(),
+                data.get("hdmf","").strip(), data.get("advisory_class","").strip(),
+                data.get("ec_name","").strip(), data.get("ec_number","").strip(),
+                now, existing["id"]
+            ))
+            conn.commit()
+            return True, "updated", existing["id"]
+        else:
+            cur = conn.execute("""
+                INSERT INTO teacher_profiles (
+                    last_name, first_name, middle_initial, employee_no,
+                    position, birth_date, blood_type, address,
+                    prc_number, tin, philhealth, gsis, hdmf,
+                    advisory_class, ec_name, ec_number,
+                    created_at, updated_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                data.get("last_name","").strip(), data.get("first_name","").strip(),
+                data.get("middle_initial","").strip(), emp,
+                data.get("position","").strip(), data.get("birth_date","").strip(),
+                data.get("blood_type","").strip(), data.get("address","").strip(),
+                data.get("prc_number","").strip(), data.get("tin","").strip(),
+                data.get("philhealth","").strip(), data.get("gsis","").strip(),
+                data.get("hdmf","").strip(), data.get("advisory_class","").strip(),
+                data.get("ec_name","").strip(), data.get("ec_number","").strip(),
+                now, now
+            ))
+            conn.commit()
+            return True, "added", cur.lastrowid
+    except Exception as e:
+        print(f"add_teacher error: {e}")
+        return False, str(e), None
+    finally:
+        conn.close()
+
+
+def update_teacher_photo(teacher_id, photo_url):
+    conn = get_connection()
+    conn.execute("UPDATE teacher_profiles SET photo_url=? WHERE id=?", (photo_url, teacher_id))
+    conn.commit()
+    conn.close()
+
+
+def delete_teacher(teacher_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM teacher_profiles WHERE id=?", (teacher_id,))
+    conn.commit()
+    conn.close()
+
+
+def bulk_import_teachers(rows):
+    """Import list of teacher dicts. Returns (added, updated, errors)."""
+    added = 0; updated = 0; errors = []
+    for r in rows:
+        ok, status, _ = add_teacher(r)
+        if ok:
+            if status == "added": added += 1
+            else: updated += 1
+        else:
+            errors.append(f"{r.get('last_name','?')}: {status}")
+    return added, updated, errors
+
+
+def export_teachers_csv():
+    import csv, io
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM teacher_profiles ORDER BY last_name, first_name").fetchall()
+    conn.close()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "last_name","first_name","middle_initial","employee_no","position",
+        "birth_date","blood_type","address","prc_number","tin",
+        "philhealth","gsis","hdmf","advisory_class","photo_url",
+        "ec_name","ec_number"
+    ])
+    for r in rows:
+        writer.writerow([
+            r["last_name"] or "", r["first_name"] or "", r["middle_initial"] or "",
+            r["employee_no"] or "", r["position"] or "",
+            r["birth_date"] or "", r["blood_type"] or "", r["address"] or "",
+            r["prc_number"] or "", r["tin"] or "",
+            r["philhealth"] or "", r["gsis"] or "", r["hdmf"] or "",
+            r["advisory_class"] or "", r["photo_url"] or "",
+            r["ec_name"] or "", r["ec_number"] or ""
+        ])
+    return output.getvalue()

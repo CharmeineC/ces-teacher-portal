@@ -1012,11 +1012,31 @@ def admin_bulk_restore():
 @app.route("/teachers")
 def teachers_page():
     from database import get_all_teachers
-    search = request.args.get("search","")
-    teachers = get_all_teachers(search or None)
+    search      = request.args.get("search","")
+    filter_type = request.args.get("filter","")
+    all_teachers = get_all_teachers(search or None)
+
+    # Apply filter for stat card clicks
+    if filter_type == "missing_photo":
+        filtered = [t for t in all_teachers if not t["photo_url"]]
+    elif filter_type == "missing_sig":
+        filtered = [t for t in all_teachers if not t["signature_url"]]
+    elif filter_type == "incomplete":
+        def is_incomplete(t):
+            fields = [t["last_name"],t["first_name"],t["employee_no"],t["position"],
+                      t["birth_date"],t["blood_type"],t["address"],t["prc_number"],
+                      t["tin"],t["philhealth"],t["gsis"],t["hdmf"],
+                      t["ec_name"],t["ec_number"],t["photo_url"],t["signature_url"]]
+            return any(not f for f in fields)
+        filtered = [t for t in all_teachers if is_incomplete(t)]
+    else:
+        filtered = all_teachers
+
     return render_template("teachers.html",
-                           teachers=teachers,
+                           teachers=all_teachers,
+                           filtered_teachers=filtered,
                            search=search,
+                           filter_type=filter_type,
                            school_name=SCHOOL_NAME,
                            is_admin=is_admin())
 
@@ -1138,8 +1158,6 @@ def route_delete_teacher(teacher_id):
 
 @app.route("/import_teachers", methods=["POST"])
 def route_import_teachers():
-    if not is_admin():
-        return redirect(url_for("teachers_page", msg="Admin only", success="0"))
     if "file" not in request.files:
         return redirect(url_for("teachers_page", msg="No file", success="0"))
     f = request.files["file"]

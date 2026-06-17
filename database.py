@@ -77,11 +77,17 @@ def setup_database():
             employee_no TEXT, position TEXT, birth_date TEXT, blood_type TEXT,
             address TEXT, prc_number TEXT, tin TEXT, philhealth TEXT,
             gsis TEXT, hdmf TEXT, advisory_class TEXT, photo_url TEXT,
+            signature_url TEXT,
             ec_name TEXT, ec_number TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime')),
             updated_at TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
+    # Add signature_url to existing databases
+    try:
+        cursor.execute("ALTER TABLE teacher_profiles ADD COLUMN signature_url TEXT DEFAULT ''")
+    except Exception:
+        pass
     conn.commit()
     conn.close()
     print("✅ Teacher portal database ready.")
@@ -828,6 +834,40 @@ def update_teacher_photo(teacher_id, photo_url):
     conn.execute("UPDATE teacher_profiles SET photo_url=? WHERE id=?", (photo_url, teacher_id))
     conn.commit()
     conn.close()
+
+
+def update_teacher_signature(teacher_id, signature_url):
+    conn = get_connection()
+    conn.execute("UPDATE teacher_profiles SET signature_url=? WHERE id=?", (signature_url, teacher_id))
+    conn.commit()
+    conn.close()
+
+
+def get_teacher_completion(teacher):
+    """Calculate completion % and list of missing fields."""
+    required = {
+        "Last Name": teacher["last_name"],
+        "First Name": teacher["first_name"],
+        "Employee No": teacher["employee_no"],
+        "Position": teacher["position"],
+        "Birth Date": teacher["birth_date"],
+        "Blood Type": teacher["blood_type"],
+        "Address": teacher["address"],
+        "PRC Number": teacher["prc_number"],
+        "TIN": teacher["tin"],
+        "PhilHealth": teacher["philhealth"],
+        "GSIS": teacher["gsis"],
+        "HDMF/Pag-Ibig": teacher["hdmf"],
+        "Emergency Contact": teacher["ec_name"],
+        "Contact Number": teacher["ec_number"],
+        "ID Photo": teacher["photo_url"],
+        "Signature": teacher.get("signature_url",""),
+    }
+    missing = [k for k,v in required.items() if not v]
+    total = len(required)
+    complete = total - len(missing)
+    pct = int((complete / total) * 100)
+    return pct, missing
 
 
 def delete_teacher(teacher_id):

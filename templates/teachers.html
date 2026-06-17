@@ -110,8 +110,14 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="page-sub">{{ teachers|length }} teacher{{ 's' if teachers|length != 1 else '' }} on record</div>
     </div>
     <div class="actions">
+      {% if is_admin %}
       <a href="/download_teachers_csv" class="btn btn-outline">⬇ Export CSV</a>
       <button class="btn btn-outline" onclick="openModal('import-modal')">⬆ Import CSV</button>
+      {% else %}
+      <a href="https://docs.google.com/spreadsheets/d/17qq3MNEnX-FVLBrmQ_XwkSm0rlsz41L6JUIhoez49KM/copy" target="_blank" class="btn btn-outline">
+        📊 Open Google Sheets Template
+      </a>
+      {% endif %}
       <button class="btn btn-green" onclick="openModal('add-teacher-modal')">+ Add Teacher</button>
     </div>
   </div>

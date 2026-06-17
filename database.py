@@ -69,9 +69,8 @@ def setup_database():
     except Exception:
         pass
 
-    conn.commit()
-    conn.close()
-    conn.execute("""
+    # Teacher profiles table
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS teacher_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             last_name TEXT, first_name TEXT, middle_initial TEXT,
@@ -84,6 +83,7 @@ def setup_database():
         )
     """)
     conn.commit()
+    conn.close()
     print("✅ Teacher portal database ready.")
 
 

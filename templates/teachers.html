@@ -7,64 +7,79 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--green:#00a86b;--green-dark:#007a4d;--green-light:#ecfdf5;--navy:#1a3c5e;--red:#dc2626;--amber:#d97706;--bg:#f0faf6;--card:#fff;--border:#d1fae5;--text:#1a1d2e;--muted:#6b7280;--shadow:0 2px 16px rgba(0,168,107,.1);}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
-.topbar{background:var(--green-dark);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.15);}
+:root{--green:#00a86b;--gd:#007a4d;--gl:#ecfdf5;--navy:#1a3c5e;--red:#dc2626;--amber:#d97706;--bg:#f0faf6;--card:#fff;--bd:#d1fae5;--tx:#1a1d2e;--mu:#6b7280;--sh:0 2px 16px rgba(0,168,107,.1);}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-height:100vh;}
+.topbar{background:var(--gd);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.15);}
 .school-name{font-size:15px;font-weight:800;color:white;}
 .school-sub{font-size:10px;color:rgba(255,255,255,.7);}
-.topbar-right{display:flex;gap:8px;align-items:center;}
+.topbar-r{display:flex;gap:8px;align-items:center;}
 .btn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:all .15s;}
-.btn-white{background:white;color:var(--green-dark);}
+.btn-white{background:white;color:var(--gd);}
 .btn-green{background:var(--green);color:white;}
-.btn-outline{background:white;color:var(--text);border:1px solid var(--border);}
+.btn-green:hover{background:var(--gd);}
+.btn-outline{background:white;color:var(--tx);border:1px solid var(--bd);}
+.btn-outline:hover{border-color:var(--green);}
 .btn-red{background:#fef2f2;color:var(--red);border:1px solid #fca5a5;}
+.btn-amber{background:#fffbeb;color:#92400e;border:1px solid #fcd34d;}
 .btn-sm{padding:5px 10px;font-size:11px;}
-.admin-badge{background:white;color:var(--green-dark);padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;}
-.content{padding:20px;max-width:1100px;margin:0 auto;}
-.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-size:13px;margin-bottom:16px;}
+.admin-badge{background:white;color:var(--gd);padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;}
+.content{padding:20px;max-width:1200px;margin:0 auto;}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
 .page-title{font-size:22px;font-weight:900;color:var(--navy);}
-.page-sub{font-size:13px;color:var(--muted);}
-.actions{display:flex;gap:8px;flex-wrap:wrap;}
+.page-sub{font-size:13px;color:var(--mu);}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .banner{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;font-weight:500;}
-.banner-success{background:#ecfdf5;border:1px solid #6ee7b7;color:var(--green-dark);}
-.banner-error{background:#fef2f2;border:1px solid #fca5a5;color:var(--red);}
-.search-bar{display:flex;gap:8px;margin-bottom:16px;}
-.search-input{flex:1;background:white;border:1px solid var(--border);border-radius:8px;padding:9px 14px;font-size:13px;outline:none;}
+.banner-ok{background:#ecfdf5;border:1px solid #6ee7b7;color:var(--gd);}
+.banner-err{background:#fef2f2;border:1px solid #fca5a5;color:var(--red);}
+.search-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:200px;background:white;border:1px solid var(--bd);border-radius:8px;padding:9px 14px;font-size:13px;outline:none;}
 .search-input:focus{border-color:var(--green);}
 /* Stats */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
-.stat{background:white;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;box-shadow:var(--shadow);}
-.stat-val{font-size:28px;font-weight:900;color:var(--navy);}
-.stat-label{font-size:11px;color:var(--muted);margin-top:2px;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.stat{background:white;border:1px solid var(--bd);border-radius:10px;padding:12px;text-align:center;box-shadow:var(--sh);}
+.stat-val{font-size:24px;font-weight:900;}
+.stat-label{font-size:10px;color:var(--mu);margin-top:2px;}
+.s1 .stat-val{color:var(--navy);}
+.s2 .stat-val{color:var(--green);}
+.s3 .stat-val{color:var(--red);}
+.s4 .stat-val{color:var(--amber);}
 /* Table */
-.table-wrap{background:white;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);overflow-x:auto;}
-table{width:100%;border-collapse:collapse;min-width:700px;}
-thead th{padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;background:#f8fafc;font-weight:600;border-bottom:1px solid var(--border);}
-tbody td{padding:11px 14px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.04);vertical-align:middle;}
+.table-wrap{background:white;border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:var(--sh);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:900px;}
+thead th{padding:10px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);text-align:left;background:#f8fafc;font-weight:600;border-bottom:1px solid var(--bd);}
+tbody td{padding:11px 12px;font-size:13px;border-bottom:1px solid rgba(0,0,0,.04);vertical-align:middle;}
 tbody tr:hover{background:#f9fafb;}
 tbody tr:last-child td{border-bottom:none;}
-.teacher-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);}
-.teacher-avatar{width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--navy);}
+.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--bd);}
+.av-placeholder{width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--navy);}
+.sig-img{height:28px;max-width:80px;object-fit:contain;border:1px solid var(--bd);border-radius:4px;background:#f9fafb;}
+/* Completion badge */
+.pct-bar{height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;margin-top:4px;min-width:80px;}
+.pct-fill{height:100%;border-radius:2px;}
+.pct-ok{background:var(--green);}
+.pct-warn{background:var(--amber);}
+.pct-bad{background:var(--red);}
+.pct-label{font-size:10px;color:var(--mu);}
 /* Modals */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
 .modal-backdrop.open{display:flex;}
 .modal{background:white;border-radius:14px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
-.modal-title{font-size:16px;font-weight:800;color:var(--green-dark);margin-bottom:16px;}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
-.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
-.form-row{margin-bottom:12px;}
-.form-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block;font-weight:600;}
-.form-input,.form-select{width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:13px;outline:none;font-family:'Inter',sans-serif;color:var(--text);}
-.form-input:focus,.form-select:focus{border-color:var(--green);background:white;}
-.form-section{font-size:11px;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 5px;border-bottom:1px solid var(--border);margin-bottom:10px;}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
-.btn-cancel{background:transparent;color:var(--muted);border:1px solid #e5e7eb;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
-.photo-zone{border:2px dashed var(--border);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
-.photo-zone:hover{border-color:var(--green);background:var(--green-light);}
+.modal-title{font-size:16px;font-weight:800;color:var(--gd);margin-bottom:16px;}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.fr{margin-bottom:12px;}
+.fl{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block;font-weight:600;}
+.fi,.fs{width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:9px 12px;font-size:13px;outline:none;font-family:'Inter',sans-serif;color:var(--tx);}
+.fi:focus,.fs:focus{border-color:var(--green);background:white;}
+.fsec{font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 5px;border-bottom:1px solid var(--bd);margin-bottom:10px;}
+.ma{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+.btn-cancel{background:transparent;color:var(--mu);border:1px solid #e5e7eb;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+.pzone{border:2px dashed var(--bd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;}
+.pzone:hover{border-color:var(--green);background:var(--gl);}
+.info-box{background:var(--gl);border:1px solid #6ee7b7;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#065f46;line-height:1.8;}
 @media(max-width:600px){
-  .form-grid,.form-grid-3{grid-template-columns:1fr;}
-  .stats{grid-template-columns:repeat(3,1fr);}
+  .fg,.fg3{grid-template-columns:1fr;}
+  .stats{grid-template-columns:repeat(2,1fr);}
   .modal{max-width:100%;margin:0;border-radius:14px 14px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:88vh;}
   .modal-backdrop{align-items:flex-end;padding:0;}
 }
@@ -76,17 +91,15 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="school-name">{{ school_name }}</div>
     <div class="school-sub">Teacher Profiles</div>
   </div>
-  <div class="topbar-right">
+  <div class="topbar-r">
     {% if is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
     <a href="/" class="btn btn-white" style="font-size:12px;">← Dashboard</a>
   </div>
 </div>
 
 <div class="content">
-  <a href="/" class="back">← Back to Dashboard</a>
-
   {% if request.args.get('msg') %}
-  <div class="banner {{ 'banner-success' if request.args.get('success')=='1' else 'banner-error' }}">
+  <div class="banner {{ 'banner-ok' if request.args.get('success')=='1' else 'banner-err' }}">
     {{ '✅' if request.args.get('success')=='1' else '❌' }} {{ request.args.get('msg') }}
   </div>
   {% endif %}
@@ -98,18 +111,25 @@ tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="actions">
       <a href="/download_teachers_csv" class="btn btn-outline">⬇ Export CSV</a>
-      {% if is_admin %}
-      <button class="btn btn-outline" onclick="openModal('import-modal')">⬆ Bulk Import</button>
-      {% endif %}
+      <button class="btn btn-outline" onclick="openModal('import-modal')">⬆ Import CSV</button>
       <button class="btn btn-green" onclick="openModal('add-teacher-modal')">+ Add Teacher</button>
     </div>
   </div>
 
   <!-- Stats -->
+  {% set total = teachers|length %}
+  {% set with_photo = teachers|selectattr('photo_url')|list|length %}
+  {% set with_sig = teachers|selectattr('signature_url')|list|length %}
+  {% set complete_count = [] %}
+  {% for t in teachers %}
+    {% set filled = [t.last_name, t.first_name, t.employee_no, t.position, t.birth_date, t.blood_type, t.address, t.prc_number, t.tin, t.philhealth, t.gsis, t.hdmf, t.ec_name, t.ec_number, t.photo_url, t.signature_url]|select|list|length %}
+    {% if filled == 16 %}{% set _ = complete_count.append(1) %}{% endif %}
+  {% endfor %}
   <div class="stats">
-    <div class="stat"><div class="stat-val">{{ teachers|length }}</div><div class="stat-label">Total Teachers</div></div>
-    <div class="stat"><div class="stat-val">{{ teachers|selectattr('photo_url')|list|length }}</div><div class="stat-label">With Photo</div></div>
-    <div class="stat"><div class="stat-val">{{ teachers|length - teachers|selectattr('photo_url')|list|length }}</div><div class="stat-label">Missing Photo</div></div>
+    <div class="stat s1"><div class="stat-val">{{ total }}</div><div class="stat-label">Total Teachers</div></div>
+    <div class="stat s2"><div class="stat-val">{{ with_photo }}</div><div class="stat-label">With Photo</div></div>
+    <div class="stat s3"><div class="stat-val">{{ with_sig }}</div><div class="stat-label">With Signature</div></div>
+    <div class="stat s4"><div class="stat-val">{{ complete_count|length }}</div><div class="stat-label">Fully Complete</div></div>
   </div>
 
   <!-- Search -->
@@ -124,19 +144,24 @@ tbody tr:last-child td{border-bottom:none;}
     <table>
       <thead>
         <tr>
-          <th>Photo</th><th>Name</th><th>Employee No.</th>
-          <th>Position</th><th>Advisory Class</th><th>Contact</th><th>Actions</th>
+          <th>Photo</th><th>Name</th><th>Emp No.</th>
+          <th>Position</th><th>Gov't Numbers</th>
+          <th>Signature</th><th>Completion</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
       {% for t in teachers %}
+      {% set fields = [t.last_name, t.first_name, t.employee_no, t.position, t.birth_date, t.blood_type, t.address, t.prc_number, t.tin, t.philhealth, t.gsis, t.hdmf, t.ec_name, t.ec_number, t.photo_url, t.signature_url] %}
+      {% set filled = fields|select|list|length %}
+      {% set pct = ((filled / 16) * 100)|int %}
       <tr>
+        <!-- Photo -->
         <td>
           <div style="position:relative;display:inline-block;">
             {% if t.photo_url %}
-              <img src="{{ t.photo_url }}" class="teacher-photo" id="tphoto-{{ t.id }}"/>
+              <img src="{{ t.photo_url }}" class="avatar" id="tphoto-{{ t.id }}"/>
             {% else %}
-              <div class="teacher-avatar" id="tphoto-{{ t.id }}">{{ t.first_name[0] if t.first_name else '?' }}</div>
+              <div class="av-placeholder" id="tphoto-{{ t.id }}">{{ t.first_name[0] if t.first_name else '?' }}</div>
             {% endif %}
             <form action="/upload_teacher_photo/{{ t.id }}" method="POST" enctype="multipart/form-data" id="tphoto-form-{{ t.id }}" style="display:none">
               <input type="file" name="photo" accept="image/*" id="tphoto-input-{{ t.id }}" onchange="submitTeacherPhoto({{ t.id }})"/>
@@ -145,31 +170,84 @@ tbody tr:last-child td{border-bottom:none;}
                  style="position:absolute;bottom:-2px;right:-2px;background:var(--green);color:white;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;border:1px solid white;">📷</div>
           </div>
         </td>
+        <!-- Name -->
         <td>
           <div style="font-weight:600;">{{ t.last_name }}, {{ t.first_name }} {{ t.middle_initial or '' }}</div>
-          <div style="font-size:11px;color:var(--muted);">{{ t.birth_date or '' }}{% if t.blood_type %} · {{ t.blood_type }}{% endif %}</div>
+          <div style="font-size:11px;color:var(--mu);">
+            {{ t.birth_date or '' }}{% if t.blood_type %} · <strong>{{ t.blood_type }}</strong>{% endif %}
+          </div>
+          <div style="font-size:11px;color:var(--mu);">{{ t.advisory_class or 'Non-Advisory' }}</div>
         </td>
-        <td style="font-family:monospace;font-size:12px;color:var(--muted);">{{ t.employee_no or '—' }}</td>
+        <!-- Emp No -->
+        <td style="font-family:monospace;font-size:12px;color:var(--mu);">{{ t.employee_no or '—' }}</td>
+        <!-- Position -->
         <td style="font-size:12px;">{{ t.position or '—' }}</td>
-        <td style="font-size:12px;color:var(--muted);">{{ t.advisory_class or 'Non-Advisory' }}</td>
-        <td style="font-size:12px;">
-          {% if t.ec_name %}<div>{{ t.ec_name }}</div><div style="color:var(--muted);">{{ t.ec_number or '' }}</div>
-          {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+        <!-- Gov numbers -->
+        <td style="font-size:11px;color:var(--mu);line-height:1.7;">
+          {% if t.prc_number %}<div>PRC: {{ t.prc_number }}</div>{% endif %}
+          {% if t.tin %}<div>TIN: {{ t.tin }}</div>{% endif %}
+          {% if t.philhealth %}<div>PhilHealth: {{ t.philhealth }}</div>{% endif %}
+          {% if not t.prc_number and not t.tin and not t.philhealth %}<span style="color:#d1d5db;">—</span>{% endif %}
         </td>
+        <!-- Signature -->
         <td>
-          <div style="display:flex;gap:4px;">
-            <button class="btn btn-outline btn-sm" onclick="openEditTeacher({{ t.id }})">✏️</button>
-            {% if is_admin %}
-            <form method="POST" action="/delete_teacher/{{ t.id }}" onsubmit="return confirm('Delete {{ t.first_name }} {{ t.last_name }}?')">
-              <button type="submit" class="btn btn-sm btn-red">🗑</button>
+          {% if t.signature_url %}
+            <img src="{{ t.signature_url }}" class="sig-img" id="tsig-{{ t.id }}"/>
+          {% else %}
+            <div id="tsig-{{ t.id }}" style="font-size:11px;color:var(--mu);">No signature</div>
+          {% endif %}
+          <form action="/upload_teacher_signature/{{ t.id }}" method="POST" enctype="multipart/form-data" id="tsig-form-{{ t.id }}" style="display:none">
+            <input type="file" name="signature" accept="image/*" id="tsig-input-{{ t.id }}" onchange="submitTeacherSig({{ t.id }})"/>
+          </form>
+          <button onclick="document.getElementById('tsig-input-{{ t.id }}').click()"
+                  class="btn btn-outline btn-sm" style="margin-top:4px;font-size:10px;">
+            ✍️ {{ 'Update' if t.signature_url else 'Upload' }}
+          </button>
+        </td>
+        <!-- Completion -->
+        <td>
+          <div class="pct-label">{{ pct }}% complete</div>
+          <div class="pct-bar">
+            <div class="pct-fill {{ 'pct-ok' if pct==100 else 'pct-warn' if pct>=60 else 'pct-bad' }}"
+                 style="width:{{ pct }}%"></div>
+          </div>
+          {% if pct < 100 %}
+          {% set missing = [] %}
+          {% if not t.last_name %}{% set _ = missing.append('Last Name') %}{% endif %}
+          {% if not t.first_name %}{% set _ = missing.append('First Name') %}{% endif %}
+          {% if not t.employee_no %}{% set _ = missing.append('Emp No') %}{% endif %}
+          {% if not t.position %}{% set _ = missing.append('Position') %}{% endif %}
+          {% if not t.birth_date %}{% set _ = missing.append('Birth Date') %}{% endif %}
+          {% if not t.blood_type %}{% set _ = missing.append('Blood Type') %}{% endif %}
+          {% if not t.address %}{% set _ = missing.append('Address') %}{% endif %}
+          {% if not t.prc_number %}{% set _ = missing.append('PRC') %}{% endif %}
+          {% if not t.tin %}{% set _ = missing.append('TIN') %}{% endif %}
+          {% if not t.philhealth %}{% set _ = missing.append('PhilHealth') %}{% endif %}
+          {% if not t.gsis %}{% set _ = missing.append('GSIS') %}{% endif %}
+          {% if not t.hdmf %}{% set _ = missing.append('HDMF') %}{% endif %}
+          {% if not t.ec_name %}{% set _ = missing.append('EC Name') %}{% endif %}
+          {% if not t.ec_number %}{% set _ = missing.append('EC No') %}{% endif %}
+          {% if not t.photo_url %}{% set _ = missing.append('Photo') %}{% endif %}
+          {% if not t.signature_url %}{% set _ = missing.append('Signature') %}{% endif %}
+          <div style="font-size:10px;color:var(--red);margin-top:2px;">Missing: {{ missing[:3]|join(', ') }}{% if missing|length > 3 %} +{{ missing|length - 3 }}{% endif %}</div>
+          {% else %}
+          <div style="font-size:10px;color:var(--green);margin-top:2px;">✓ All complete!</div>
+          {% endif %}
+        </td>
+        <!-- Actions -->
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="openEditTeacher({{ t.id }})">✏️ Edit</button>
+            <form method="POST" action="/delete_teacher/{{ t.id }}" 
+                  onsubmit="return confirm('Delete {{ t.first_name }} {{ t.last_name }}? This cannot be undone.')">
+              <button type="submit" class="btn btn-sm btn-red">🗑 Delete</button>
             </form>
-            {% endif %}
           </div>
         </td>
       </tr>
       {% endfor %}
       {% if not teachers %}
-      <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">No teachers yet. Click <strong>"+ Add Teacher"</strong> to get started!</td></tr>
+      <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu);">No teachers yet. Click <strong>"+ Add Teacher"</strong> to get started!</td></tr>
       {% endif %}
       </tbody>
     </table>
@@ -181,58 +259,70 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="modal">
     <div class="modal-title">+ Add Teacher Profile</div>
     <form method="POST" action="/add_teacher" enctype="multipart/form-data">
-      <div class="form-section">Personal Information</div>
-      <div class="form-grid-3">
-        <div><label class="form-label">Last Name *</label><input class="form-input" name="last_name" required placeholder="dela Cruz"/></div>
-        <div><label class="form-label">First Name *</label><input class="form-input" name="first_name" required placeholder="Maria"/></div>
-        <div><label class="form-label">M.I.</label><input class="form-input" name="middle_initial" placeholder="A"/></div>
+      <div class="fsec">Personal Information</div>
+      <div class="fg3">
+        <div><label class="fl">Last Name *</label><input class="fi" name="last_name" required placeholder="dela Cruz"/></div>
+        <div><label class="fl">First Name *</label><input class="fi" name="first_name" required placeholder="Maria"/></div>
+        <div><label class="fl">M.I.</label><input class="fi" name="middle_initial" placeholder="A"/></div>
       </div>
-      <div class="form-grid">
-        <div><label class="form-label">Employee / ID No.</label><input class="form-input" name="employee_no" placeholder="EMP-001"/></div>
-        <div><label class="form-label">Position</label><input class="form-input" name="position" placeholder="Teacher I"/></div>
+      <div class="fg">
+        <div><label class="fl">Employee / ID No.</label><input class="fi" name="employee_no" placeholder="EMP-001"/></div>
+        <div><label class="fl">Position</label><input class="fi" name="position" placeholder="Teacher I"/></div>
       </div>
-      <div class="form-grid">
-        <div><label class="form-label">Date of Birth</label><input class="form-input" name="birth_date" type="date"/></div>
+      <div class="fg">
+        <div><label class="fl">Date of Birth</label><input class="fi" name="birth_date" type="date"/></div>
         <div>
-          <label class="form-label">Blood Type</label>
-          <select class="form-select" name="blood_type">
+          <label class="fl">Blood Type</label>
+          <select class="fs" name="blood_type">
             <option value="">Select</option>
             <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
             <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
           </select>
         </div>
       </div>
-      <div class="form-row"><label class="form-label">Address</label><input class="form-input" name="address" placeholder="Home address"/></div>
-      <div class="form-row"><label class="form-label">Advisory Class (leave blank if non-advisory)</label><input class="form-input" name="advisory_class" placeholder="e.g. Grade 1 - Sampaguita"/></div>
+      <div class="fr"><label class="fl">Address</label><input class="fi" name="address" placeholder="Home address"/></div>
+      <div class="fr"><label class="fl">Advisory Class (leave blank if non-advisory)</label><input class="fi" name="advisory_class" placeholder="e.g. Grade 1 - Sampaguita"/></div>
 
-      <div class="form-section">Government Numbers</div>
-      <div class="form-grid">
-        <div><label class="form-label">PRC Number</label><input class="form-input" name="prc_number"/></div>
-        <div><label class="form-label">TIN</label><input class="form-input" name="tin"/></div>
+      <div class="fsec">Government Numbers</div>
+      <div class="fg">
+        <div><label class="fl">PRC Number</label><input class="fi" name="prc_number"/></div>
+        <div><label class="fl">TIN</label><input class="fi" name="tin"/></div>
       </div>
-      <div class="form-grid-3">
-        <div><label class="form-label">PhilHealth</label><input class="form-input" name="philhealth"/></div>
-        <div><label class="form-label">GSIS</label><input class="form-input" name="gsis"/></div>
-        <div><label class="form-label">HDMF / Pag-Ibig</label><input class="form-input" name="hdmf"/></div>
-      </div>
-
-      <div class="form-section">Emergency Contact</div>
-      <div class="form-grid">
-        <div><label class="form-label">Contact Person</label><input class="form-input" name="ec_name"/></div>
-        <div><label class="form-label">Contact Number</label><input class="form-input" name="ec_number" placeholder="09XXXXXXXXX"/></div>
+      <div class="fg3">
+        <div><label class="fl">PhilHealth</label><input class="fi" name="philhealth"/></div>
+        <div><label class="fl">GSIS</label><input class="fi" name="gsis"/></div>
+        <div><label class="fl">HDMF / Pag-Ibig</label><input class="fi" name="hdmf"/></div>
       </div>
 
-      <div class="form-section">ID Photo (optional)</div>
-      <div class="form-row">
-        <div class="photo-zone" onclick="document.getElementById('teacher-photo-add').click()">
-          <div style="font-size:24px;margin-bottom:4px;">📷</div>
-          <div style="font-size:12px;color:var(--muted);">Click to upload ID photo</div>
-          <img id="teacher-photo-preview" style="display:none;width:60px;height:60px;border-radius:50%;object-fit:cover;margin:6px auto;"/>
+      <div class="fsec">Emergency Contact</div>
+      <div class="fg">
+        <div><label class="fl">Contact Person</label><input class="fi" name="ec_name"/></div>
+        <div><label class="fl">Contact Number</label><input class="fi" name="ec_number" placeholder="09XXXXXXXXX"/></div>
+      </div>
+
+      <div class="fsec">ID Photo & Signature</div>
+      <div class="fg">
+        <div>
+          <label class="fl">ID Photo</label>
+          <div class="pzone" onclick="document.getElementById('add-photo-inp').click()">
+            <div style="font-size:20px;">📷</div>
+            <div style="font-size:11px;color:var(--mu);">Click to upload photo</div>
+            <img id="add-photo-prev" style="display:none;width:50px;height:50px;border-radius:50%;object-fit:cover;margin:6px auto;"/>
+          </div>
+          <input type="file" id="add-photo-inp" name="photo" accept="image/*" style="display:none" onchange="prevImg(this,'add-photo-prev')"/>
         </div>
-        <input type="file" id="teacher-photo-add" name="photo" accept="image/*" style="display:none" onchange="previewTeacherPhoto(this)"/>
+        <div>
+          <label class="fl">Signature</label>
+          <div class="pzone" onclick="document.getElementById('add-sig-inp').click()">
+            <div style="font-size:20px;">✍️</div>
+            <div style="font-size:11px;color:var(--mu);">Click to upload signature</div>
+            <img id="add-sig-prev" style="display:none;max-height:40px;margin:6px auto;"/>
+          </div>
+          <input type="file" id="add-sig-inp" name="signature" accept="image/*" style="display:none" onchange="prevImg(this,'add-sig-prev')"/>
+        </div>
       </div>
 
-      <div class="modal-actions">
+      <div class="ma">
         <button type="button" class="btn-cancel" onclick="closeModal('add-teacher-modal')">Cancel</button>
         <button type="submit" class="btn btn-green">Save Teacher</button>
       </div>
@@ -244,46 +334,45 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="modal-backdrop" id="edit-teacher-modal">
   <div class="modal">
     <div class="modal-title">✏️ Edit Teacher Profile</div>
-    <form method="POST" id="edit-teacher-form" enctype="multipart/form-data">
-      <div class="form-section">Personal Information</div>
-      <div class="form-grid-3">
-        <div><label class="form-label">Last Name *</label><input class="form-input" name="last_name" id="et-last" required/></div>
-        <div><label class="form-label">First Name *</label><input class="form-input" name="first_name" id="et-first" required/></div>
-        <div><label class="form-label">M.I.</label><input class="form-input" name="middle_initial" id="et-mi"/></div>
+    <form method="POST" id="edit-form" enctype="multipart/form-data">
+      <div class="fsec">Personal Information</div>
+      <div class="fg3">
+        <div><label class="fl">Last Name *</label><input class="fi" name="last_name" id="et-last" required/></div>
+        <div><label class="fl">First Name *</label><input class="fi" name="first_name" id="et-first" required/></div>
+        <div><label class="fl">M.I.</label><input class="fi" name="middle_initial" id="et-mi"/></div>
       </div>
-      <div class="form-grid">
-        <div><label class="form-label">Employee / ID No.</label><input class="form-input" name="employee_no" id="et-emp"/></div>
-        <div><label class="form-label">Position</label><input class="form-input" name="position" id="et-pos"/></div>
+      <div class="fg">
+        <div><label class="fl">Employee / ID No.</label><input class="fi" name="employee_no" id="et-emp"/></div>
+        <div><label class="fl">Position</label><input class="fi" name="position" id="et-pos"/></div>
       </div>
-      <div class="form-grid">
-        <div><label class="form-label">Date of Birth</label><input class="form-input" name="birth_date" id="et-dob" type="date"/></div>
-        <div>
-          <label class="form-label">Blood Type</label>
-          <select class="form-select" name="blood_type" id="et-bt">
+      <div class="fg">
+        <div><label class="fl">Date of Birth</label><input class="fi" name="birth_date" id="et-dob" type="date"/></div>
+        <div><label class="fl">Blood Type</label>
+          <select class="fs" name="blood_type" id="et-bt">
             <option value="">Select</option>
             <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
             <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
           </select>
         </div>
       </div>
-      <div class="form-row"><label class="form-label">Address</label><input class="form-input" name="address" id="et-addr"/></div>
-      <div class="form-row"><label class="form-label">Advisory Class</label><input class="form-input" name="advisory_class" id="et-adv"/></div>
-      <div class="form-section">Government Numbers</div>
-      <div class="form-grid">
-        <div><label class="form-label">PRC Number</label><input class="form-input" name="prc_number" id="et-prc"/></div>
-        <div><label class="form-label">TIN</label><input class="form-input" name="tin" id="et-tin"/></div>
+      <div class="fr"><label class="fl">Address</label><input class="fi" name="address" id="et-addr"/></div>
+      <div class="fr"><label class="fl">Advisory Class</label><input class="fi" name="advisory_class" id="et-adv"/></div>
+      <div class="fsec">Government Numbers</div>
+      <div class="fg">
+        <div><label class="fl">PRC Number</label><input class="fi" name="prc_number" id="et-prc"/></div>
+        <div><label class="fl">TIN</label><input class="fi" name="tin" id="et-tin"/></div>
       </div>
-      <div class="form-grid-3">
-        <div><label class="form-label">PhilHealth</label><input class="form-input" name="philhealth" id="et-ph"/></div>
-        <div><label class="form-label">GSIS</label><input class="form-input" name="gsis" id="et-gsis"/></div>
-        <div><label class="form-label">HDMF / Pag-Ibig</label><input class="form-input" name="hdmf" id="et-hdmf"/></div>
+      <div class="fg3">
+        <div><label class="fl">PhilHealth</label><input class="fi" name="philhealth" id="et-ph"/></div>
+        <div><label class="fl">GSIS</label><input class="fi" name="gsis" id="et-gsis"/></div>
+        <div><label class="fl">HDMF / Pag-Ibig</label><input class="fi" name="hdmf" id="et-hdmf"/></div>
       </div>
-      <div class="form-section">Emergency Contact</div>
-      <div class="form-grid">
-        <div><label class="form-label">Contact Person</label><input class="form-input" name="ec_name" id="et-ecn"/></div>
-        <div><label class="form-label">Contact Number</label><input class="form-input" name="ec_number" id="et-ecnum"/></div>
+      <div class="fsec">Emergency Contact</div>
+      <div class="fg">
+        <div><label class="fl">Contact Person</label><input class="fi" name="ec_name" id="et-ecn"/></div>
+        <div><label class="fl">Contact Number</label><input class="fi" name="ec_number" id="et-ecnum"/></div>
       </div>
-      <div class="modal-actions">
+      <div class="ma">
         <button type="button" class="btn-cancel" onclick="closeModal('edit-teacher-modal')">Cancel</button>
         <button type="submit" class="btn btn-green">Save Changes</button>
       </div>
@@ -291,22 +380,35 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- BULK IMPORT MODAL -->
+<!-- IMPORT MODAL -->
 <div class="modal-backdrop" id="import-modal">
   <div class="modal">
-    <div class="modal-title">⬆ Bulk Import Teachers</div>
-    <div style="background:var(--green-light);border:1px solid #6ee7b7;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#065f46;line-height:1.8;">
-      <strong>CSV columns:</strong> last_name, first_name, middle_initial, employee_no, position, birth_date, blood_type, address, prc_number, tin, philhealth, gsis, hdmf, advisory_class, ec_name, ec_number<br/>
-      If employee_no already exists, the record will be <strong>updated</strong>.
+    <div class="modal-title">⬆ Import Teachers from CSV</div>
+    <div class="info-box">
+      <strong>How to import:</strong><br/>
+      1. Click <strong>"📊 Open Google Sheets Template"</strong> below and make a copy<br/>
+      2. Fill in teacher details — one teacher per row<br/>
+      3. File → Download → Comma Separated Values (.csv)<br/>
+      4. Upload the CSV file below<br/><br/>
+      If Employee No. already exists → record will be <strong>updated</strong>
+    </div>
+    <div style="margin-bottom:14px;">
+      <a href="https://docs.google.com/spreadsheets/d/17qq3MNEnX-FVLBrmQ_XwkSm0rlsz41L6JUIhoez49KM/copy"
+         target="_blank" class="btn btn-outline" style="width:100%;justify-content:center;margin-bottom:8px;">
+        📊 Open Teacher Google Sheets Template
+      </a>
+      <a href="/download_teacher_template_csv" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;color:var(--mu);">
+        ⬇ Download CSV Template (alternative)
+      </a>
     </div>
     <form method="POST" action="/import_teachers" enctype="multipart/form-data">
-      <div class="form-row">
-        <label class="form-label">Select CSV file</label>
-        <input class="form-input" type="file" name="file" accept=".csv" required/>
+      <div class="fr">
+        <label class="fl">Select CSV File *</label>
+        <input class="fi" type="file" name="file" accept=".csv" required/>
       </div>
-      <div class="modal-actions">
+      <div class="ma">
         <button type="button" class="btn-cancel" onclick="closeModal('import-modal')">Cancel</button>
-        <button type="submit" class="btn btn-green">Import</button>
+        <button type="submit" class="btn btn-green">Import Teachers</button>
       </div>
     </form>
   </div>
@@ -319,7 +421,7 @@ document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('clic
 
 function openEditTeacher(id){
   fetch('/api/teacher/'+id).then(r=>r.json()).then(t=>{
-    document.getElementById('edit-teacher-form').action='/edit_teacher/'+id;
+    document.getElementById('edit-form').action='/edit_teacher/'+id;
     document.getElementById('et-last').value=t.last_name||'';
     document.getElementById('et-first').value=t.first_name||'';
     document.getElementById('et-mi').value=t.middle_initial||'';
@@ -340,32 +442,41 @@ function openEditTeacher(id){
   });
 }
 
-function previewTeacherPhoto(input){
+function prevImg(input,prevId){
   var file=input.files[0]; if(!file) return;
   var reader=new FileReader();
   reader.onload=function(e){
-    var p=document.getElementById('teacher-photo-preview');
+    var p=document.getElementById(prevId);
     p.src=e.target.result; p.style.display='block';
-  };
-  reader.readAsDataURL(file);
+  };reader.readAsDataURL(file);
 }
 
 function submitTeacherPhoto(id){
   var input=document.getElementById('tphoto-input-'+id);
   var file=input.files[0]; if(!file) return;
-  var formData=new FormData();
-  formData.append('photo',file);
-  fetch('/upload_teacher_photo/'+id,{method:'POST',body:formData})
-    .then(r=>r.json())
-    .then(data=>{
-      if(data.success){
+  var fd=new FormData(); fd.append('photo',file);
+  fetch('/upload_teacher_photo/'+id,{method:'POST',body:fd})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){
         var el=document.getElementById('tphoto-'+id);
-        if(el.tagName==='IMG'){el.src=data.photo_url+'?t='+Date.now();}
-        else{
-          var img=document.createElement('img');
-          img.src=data.photo_url; img.className='teacher-photo'; img.id='tphoto-'+id;
-          el.parentNode.replaceChild(img,el);
-        }
+        if(el.tagName==='IMG'){el.src=d.photo_url+'?t='+Date.now();}
+        else{var img=document.createElement('img');img.src=d.photo_url;img.className='avatar';img.id='tphoto-'+id;el.parentNode.replaceChild(img,el);}
+      }
+    });
+}
+
+function submitTeacherSig(id){
+  var input=document.getElementById('tsig-input-'+id);
+  var file=input.files[0]; if(!file) return;
+  var fd=new FormData(); fd.append('signature',file);
+  fetch('/upload_teacher_signature/'+id,{method:'POST',body:fd})
+    .then(r=>r.json()).then(d=>{
+      if(d.success){
+        var el=document.getElementById('tsig-'+id);
+        var img=document.createElement('img');
+        img.src=d.signature_url+'?t='+Date.now();
+        img.className='sig-img'; img.id='tsig-'+id;
+        el.parentNode.replaceChild(img,el);
       }
     });
 }

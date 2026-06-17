@@ -43,6 +43,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-hei
 .s2 .stat-val{color:var(--green);}
 .s3 .stat-val{color:var(--red);}
 .s4 .stat-val{color:var(--amber);}
+.stat:hover{border-color:var(--green);transform:translateY(-1px);transition:all .15s;}
+.stat-active{border-color:var(--green) !important;box-shadow:0 0 0 2px rgba(0,168,107,.2) !important;}
 /* Table */
 .table-wrap{background:white;border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:var(--sh);overflow-x:auto;}
 table{width:100%;border-collapse:collapse;min-width:900px;}
@@ -112,31 +114,56 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="actions">
       {% if is_admin %}
       <a href="/download_teachers_csv" class="btn btn-outline">⬇ Export CSV</a>
-      <button class="btn btn-outline" onclick="openModal('import-modal')">⬆ Import CSV</button>
-      {% else %}
-      <a href="https://docs.google.com/spreadsheets/d/17qq3MNEnX-FVLBrmQ_XwkSm0rlsz41L6JUIhoez49KM/copy" target="_blank" class="btn btn-outline">
-        📊 Open Google Sheets Template
-      </a>
       {% endif %}
+      <button class="btn btn-outline" onclick="openModal('import-modal')">⬆ Import CSV</button>
       <button class="btn btn-green" onclick="openModal('add-teacher-modal')">+ Add Teacher</button>
     </div>
   </div>
 
   <!-- Stats -->
   {% set total = teachers|length %}
-  {% set with_photo = teachers|selectattr('photo_url')|list|length %}
-  {% set with_sig = teachers|selectattr('signature_url')|list|length %}
+  {% set missing_photo = [] %}
+  {% set missing_sig = [] %}
+  {% set incomplete = [] %}
   {% set complete_count = [] %}
   {% for t in teachers %}
+    {% if not t.photo_url %}{% set _ = missing_photo.append(t) %}{% endif %}
+    {% if not t.signature_url %}{% set _ = missing_sig.append(t) %}{% endif %}
     {% set filled = [t.last_name, t.first_name, t.employee_no, t.position, t.birth_date, t.blood_type, t.address, t.prc_number, t.tin, t.philhealth, t.gsis, t.hdmf, t.ec_name, t.ec_number, t.photo_url, t.signature_url]|select|list|length %}
+    {% if filled < 16 %}{% set _ = incomplete.append(t) %}{% endif %}
     {% if filled == 16 %}{% set _ = complete_count.append(1) %}{% endif %}
   {% endfor %}
   <div class="stats">
-    <div class="stat s1"><div class="stat-val">{{ total }}</div><div class="stat-label">Total Teachers</div></div>
-    <div class="stat s2"><div class="stat-val">{{ with_photo }}</div><div class="stat-label">With Photo</div></div>
-    <div class="stat s3"><div class="stat-val">{{ with_sig }}</div><div class="stat-label">With Signature</div></div>
-    <div class="stat s4"><div class="stat-val">{{ complete_count|length }}</div><div class="stat-label">Fully Complete</div></div>
+    <a href="/teachers" class="stat s1 {{ 'stat-active' if not filter_type }}" style="text-decoration:none;display:block;cursor:pointer;">
+      <div class="stat-val">{{ total }}</div><div class="stat-label">Total Teachers</div>
+      <div style="font-size:9px;color:var(--mu);margin-top:2px;">Click to view all</div>
+    </a>
+    <a href="/teachers?filter=missing_photo" class="stat s3 {{ 'stat-active' if filter_type=='missing_photo' }}" style="text-decoration:none;display:block;cursor:pointer;">
+      <div class="stat-val">{{ missing_photo|length }}</div><div class="stat-label">Missing Photo</div>
+      <div style="font-size:9px;color:var(--mu);margin-top:2px;">Click to view</div>
+    </a>
+    <a href="/teachers?filter=missing_sig" class="stat s4 {{ 'stat-active' if filter_type=='missing_sig' }}" style="text-decoration:none;display:block;cursor:pointer;">
+      <div class="stat-val">{{ missing_sig|length }}</div><div class="stat-label">Missing Signature</div>
+      <div style="font-size:9px;color:var(--mu);margin-top:2px;">Click to view</div>
+    </a>
+    <a href="/teachers?filter=incomplete" class="stat s2 {{ 'stat-active' if filter_type=='incomplete' }}" style="text-decoration:none;display:block;cursor:pointer;">
+      <div class="stat-val">{{ incomplete|length }}</div><div class="stat-label">Incomplete Info</div>
+      <div style="font-size:9px;color:var(--mu);margin-top:2px;">Click to view</div>
+    </a>
   </div>
+
+  <!-- Filter banner -->
+  {% if filter_type %}
+  <div style="background:var(--gl);border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:13px;font-weight:600;color:var(--gd);">
+      {% if filter_type == 'missing_photo' %}📷 Teachers missing photo ({{ filtered_teachers|length }})
+      {% elif filter_type == 'missing_sig' %}✍️ Teachers missing signature ({{ filtered_teachers|length }})
+      {% elif filter_type == 'incomplete' %}⚠️ Teachers with incomplete info ({{ filtered_teachers|length }})
+      {% endif %}
+    </div>
+    <a href="/teachers" style="font-size:12px;color:var(--mu);text-decoration:none;">✕ Clear filter</a>
+  </div>
+  {% endif %}
 
   <!-- Search -->
   <form method="GET" class="search-bar">
@@ -156,11 +183,14 @@ tbody tr:last-child td{border-bottom:none;}
         </tr>
       </thead>
       <tbody>
-      {% for t in teachers %}
+      {% set display_teachers = filtered_teachers if filter_type else teachers %}
+      {% for t in display_teachers %}
       {% set fields = [t.last_name, t.first_name, t.employee_no, t.position, t.birth_date, t.blood_type, t.address, t.prc_number, t.tin, t.philhealth, t.gsis, t.hdmf, t.ec_name, t.ec_number, t.photo_url, t.signature_url] %}
       {% set filled = fields|select|list|length %}
       {% set pct = ((filled / 16) * 100)|int %}
-      <tr>
+      <tr data-photo="{{ '1' if t.photo_url else '0' }}"
+          data-sig="{{ '1' if t.signature_url else '0' }}"
+          data-pct="{{ (([t.last_name, t.first_name, t.employee_no, t.position, t.birth_date, t.blood_type, t.address, t.prc_number, t.tin, t.philhealth, t.gsis, t.hdmf, t.ec_name, t.ec_number, t.photo_url, t.signature_url]|select|list|length / 16) * 100)|int }}">
         <!-- Photo -->
         <td>
           <div style="position:relative;display:inline-block;">
@@ -252,8 +282,11 @@ tbody tr:last-child td{border-bottom:none;}
         </td>
       </tr>
       {% endfor %}
-      {% if not teachers %}
-      <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu);">No teachers yet. Click <strong>"+ Add Teacher"</strong> to get started!</td></tr>
+      {% if not display_teachers %}
+      <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu);">
+        {% if filter_type %}No teachers found matching this filter.
+        {% else %}No teachers yet. Click <strong>"+ Add Teacher"</strong> to get started!{% endif %}
+      </td></tr>
       {% endif %}
       </tbody>
     </table>
@@ -485,6 +518,43 @@ function submitTeacherSig(id){
         el.parentNode.replaceChild(img,el);
       }
     });
+}
+
+var activeFilter = 'all';
+function filterTeachers(filter){
+  activeFilter = filter;
+  var rows = document.querySelectorAll('tbody tr[data-pct]');
+  var shown = 0;
+  rows.forEach(function(row){
+    var photo = row.getAttribute('data-photo');
+    var sig   = row.getAttribute('data-sig');
+    var pct   = parseInt(row.getAttribute('data-pct'));
+    var show  = false;
+    if(filter === 'all')       show = true;
+    if(filter === 'no-photo')  show = photo === '0';
+    if(filter === 'no-sig')    show = sig === '0';
+    if(filter === 'incomplete')show = pct < 100;
+    row.style.display = show ? '' : 'none';
+    if(show) shown++;
+  });
+  // Highlight active card
+  document.querySelectorAll('.stat').forEach(function(s){
+    s.style.outline = 'none';
+    s.style.boxShadow = 'var(--sh)';
+  });
+  var map = {all:0,'no-photo':1,'no-sig':2,incomplete:3};
+  var cards = document.querySelectorAll('.stat');
+  if(cards[map[filter]]){
+    cards[map[filter]].style.outline = '2px solid var(--green)';
+    cards[map[filter]].style.boxShadow = '0 0 0 4px rgba(0,168,107,.15)';
+  }
+  // Update subtitle
+  var sub = document.querySelector('.page-sub');
+  var labels = {all:'All teachers',
+    'no-photo':'Teachers missing photo',
+    'no-sig':'Teachers missing signature',
+    incomplete:'Teachers with incomplete info'};
+  sub.textContent = shown + ' teacher' + (shown!==1?'s':'') + ' — ' + labels[filter];
 }
 </script>
 </body>

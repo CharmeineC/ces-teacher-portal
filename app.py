@@ -1044,15 +1044,27 @@ def route_add_teacher():
     }
     ok, status, teacher_id = add_teacher(data)
 
-    # Handle photo
+    name = f"{data['last_name']}_{data['first_name']}"
+
+    # Handle photo upload
     if ok and teacher_id and "photo" in request.files:
         photo_file = request.files["photo"]
         if photo_file and photo_file.filename and allowed_image(photo_file.filename):
-            name = f"{data['last_name']}_{data['first_name']}"
             photo_url = upload_photo(photo_file, grade="teachers",
                                      section_name="profiles", student_name=name)
             if photo_url:
                 update_teacher_photo(teacher_id, photo_url)
+
+    # Handle signature upload
+    if ok and teacher_id and "signature" in request.files:
+        from database import update_teacher_signature
+        sig_file = request.files["signature"]
+        if sig_file and sig_file.filename and allowed_image(sig_file.filename):
+            sig_url = upload_photo(sig_file, grade="teachers",
+                                   section_name="signatures",
+                                   student_name=f"SIG_{name}")
+            if sig_url:
+                update_teacher_signature(teacher_id, sig_url)
 
     msg = f"Teacher {data['last_name']}, {data['first_name']} {'added' if status=='added' else 'updated'}!"
     return redirect(url_for("teachers_page", msg=msg, success="1"))
@@ -1114,8 +1126,6 @@ def route_upload_teacher_photo(teacher_id):
 
 @app.route("/delete_teacher/<int:teacher_id>", methods=["POST"])
 def route_delete_teacher(teacher_id):
-    if not is_admin():
-        return redirect(url_for("teachers_page", msg="Admin only", success="0"))
     from database import delete_teacher, get_teacher_by_id
     t = get_teacher_by_id(teacher_id)
     if t:
@@ -1184,6 +1194,47 @@ def api_teacher(teacher_id):
     t = get_teacher_by_id(teacher_id)
     if not t: return jsonify({"error":"Not found"})
     return jsonify(dict(t))
+
+
+@app.route("/upload_teacher_signature/<int:teacher_id>", methods=["POST"])
+def route_upload_teacher_signature(teacher_id):
+    from database import get_teacher_by_id, update_teacher_signature
+    teacher = get_teacher_by_id(teacher_id)
+    if not teacher:
+        return jsonify({"success": False, "message": "Not found"})
+    if "signature" not in request.files:
+        return jsonify({"success": False, "message": "No file"})
+    sig_file = request.files["signature"]
+    if not sig_file or not sig_file.filename:
+        return jsonify({"success": False, "message": "No file selected"})
+    name = f"SIG_{teacher['last_name']}_{teacher['first_name']}"
+    sig_url = upload_photo(sig_file, grade="teachers",
+                           section_name="signatures", student_name=name)
+    if sig_url:
+        update_teacher_signature(teacher_id, sig_url)
+        return jsonify({"success": True, "signature_url": sig_url})
+    return jsonify({"success": False, "message": "Upload failed"})
+
+
+@app.route("/download_teacher_template_csv")
+def download_teacher_template_csv():
+    """Download teacher CSV template."""
+    template = (
+        "last_name,first_name,middle_initial,employee_no,position,"
+        "birth_date,blood_type,address,prc_number,tin,"
+        "philhealth,gsis,hdmf,advisory_class,ec_name,ec_number\n"
+        "dela Cruz,Maria,A,EMP-001,Teacher I,"
+        "1985-06-15,B+,123 Rizal St Davao City,1234567,123-456-789-000,"
+        "12-345678901-2,0000123456,1234567890,Grade 1 - Sampaguita,"
+        "Juan dela Cruz,09284553934\n"
+        "Reyes,Jose,B,EMP-002,Teacher II,"
+        "1990-03-22,O+,456 Mabini St Davao City,,,,,,"
+        "Non-Advisory,Ana Reyes,09171234567\n"
+    )
+    return Response(
+        template, mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=CES_Teacher_Template.csv"}
+    )
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
 

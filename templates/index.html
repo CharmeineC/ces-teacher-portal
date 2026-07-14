@@ -241,6 +241,11 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
         <div class="stat-label">ID Printed</div>
         <div class="stat-hint">Click to view</div>
       </a>
+      <a href="/?filter=missing_contact" class="stat-card s3 {{ 'stat-active' if filter_type=='missing_contact' else '' }}" style="text-decoration:none;display:block;">
+        <div class="stat-val">{{ stats.missing_contact }}</div>
+        <div class="stat-label">Missing Contact</div>
+        <div class="stat-hint">Click to view</div>
+      </a>
       <a href="/?filter=id_distributed" class="stat-card s5 {{ 'stat-active' if filter_type=='id_distributed' else '' }}" style="text-decoration:none;display:block;">
         <div class="stat-val">{{ stats.id_distributed }}</div>
         <div class="stat-label">ID Distributed</div>
@@ -274,6 +279,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
             {% elif filter_type == 'with_photo' %}✅ Students With Photo ({{ students|length }})
             {% elif filter_type == 'id_printed' %}🖨️ Students with ID Printed ({{ students|length }})
             {% elif filter_type == 'id_distributed' %}📬 Students with ID Distributed ({{ students|length }})
+            {% elif filter_type == 'missing_contact' %}⚠️ Students Missing Contact Info ({{ students|length }})
             {% else %}👥 All Students ({{ students|length }})
             {% endif %}
           </div>
@@ -281,8 +287,33 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
         </div>
         <a href="/" style="font-size:12px;color:var(--muted);text-decoration:none;">✕ Clear filter</a>
       </div>
+      <!-- Grade & Section filter bar -->
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+        <select id="grade-filter" onchange="updateSectionDropdown();applyStudentFilters();" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:white;cursor:pointer;">
+          <option value="">All Grades</option>
+          {% for g in stats.grade_stats %}
+          <option value="{{ g.grade }}" {{ 'selected' if selected_grade == g.grade else '' }}>{{ g.grade }}</option>
+          {% endfor %}
+        </select>
+        <select id="section-filter" onchange="applyStudentFilters();" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:white;cursor:pointer;">
+          <option value="">All Sections</option>
+          {% for sec in stats.section_stats %}
+          <option value="{{ sec.section_name }}" data-grade="{{ sec.grade }}" {{ 'selected' if selected_section == sec.section_name else '' }}>
+            {{ sec.grade }} - {{ sec.section_name }}
+          </option>
+          {% endfor %}
+        </select>
+        <select id="contact-filter" onchange="applyStudentFilters();" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:white;cursor:pointer;">
+          <option value="">All Students</option>
+          <option value="incomplete">⚠️ Missing Contact Info</option>
+          <option value="complete">✅ Complete Contact Info</option>
+        </select>
+        <span id="filter-count" style="font-size:12px;color:var(--muted);"></span>
+        <button onclick="clearStudentFilters()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:white;cursor:pointer;color:var(--muted);">✕ Clear</button>
+      </div>
+
       <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;min-width:600px;">
+        <table id="students-table" style="width:100%;border-collapse:collapse;min-width:600px;">
           <thead>
             <tr style="background:#f8fafc;border-bottom:1px solid var(--border);">
               <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">#</th>
@@ -290,12 +321,20 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
               <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">LRN</th>
               <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Grade & Section</th>
               <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Photo</th>
+              <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">Contact Info</th>
               <th style="padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;font-weight:600;">ID Printed</th>
             </tr>
           </thead>
           <tbody>
           {% for s in students %}
-          <tr style="border-bottom:1px solid rgba(0,0,0,.04);">
+          {% set missing = [] %}
+          {% if not s.emergency_contact_name %}{% set _ = missing.append('No contact person') %}{% endif %}
+          {% if not s.emergency_contact_number %}{% set _ = missing.append('No phone number') %}{% endif %}
+          {% if not s.emergency_contact_address %}{% set _ = missing.append('No address') %}{% endif %}
+          <tr style="border-bottom:1px solid rgba(0,0,0,.04);"
+              data-grade="{{ s.grade }}"
+              data-section="{{ s.section_name }}"
+              data-contact="{{ 'incomplete' if missing else 'complete' }}">
             <td style="padding:10px 12px;font-size:12px;color:var(--muted);">{{ loop.index }}</td>
             <td style="padding:10px 12px;font-size:13px;font-weight:600;">
               {{ s.last_name }}, {{ s.first_name }} {{ s.middle_initial or '' }}
@@ -308,6 +347,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
                 <img src="{{ s.photo_url }}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"/>
               {% else %}
                 <span style="color:var(--red);font-size:16px;">❌</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px 12px;font-size:12px;">
+              {% if missing %}
+                <span title="{{ missing|join(', ') }}" style="color:#d97706;cursor:help;">
+                  ⚠️ {{ missing|join(' · ') }}
+                </span>
+              {% else %}
+                <span style="color:var(--green);">✅ Complete</span>
               {% endif %}
             </td>
             <td style="padding:10px 12px;text-align:center;">
@@ -539,6 +587,49 @@ function toggleSidebar(){
 }
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── Grade / Section / Contact filter ────────────────────────────────────────
+function updateSectionDropdown() {
+  const grade = document.getElementById('grade-filter').value;
+  const secSel = document.getElementById('section-filter');
+  secSel.value = '';
+  Array.from(secSel.options).forEach(opt => {
+    if (!opt.value) { opt.style.display = ''; return; }
+    opt.style.display = (!grade || opt.dataset.grade === grade) ? '' : 'none';
+  });
+}
+
+function applyStudentFilters() {
+  const grade   = document.getElementById('grade-filter').value;
+  const section = document.getElementById('section-filter').value;
+  const contact = document.getElementById('contact-filter').value;
+  const rows    = document.querySelectorAll('#students-table tbody tr[data-grade]');
+  let visible   = 0;
+  rows.forEach(row => {
+    const matchGrade   = !grade   || row.dataset.grade   === grade;
+    const matchSection = !section || row.dataset.section === section;
+    const matchContact = !contact || row.dataset.contact === contact;
+    const show = matchGrade && matchSection && matchContact;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const countEl = document.getElementById('filter-count');
+  if (countEl) countEl.textContent = (grade || section || contact) ? visible + ' student' + (visible !== 1 ? 's' : '') : '';
+}
+
+function clearStudentFilters() {
+  document.getElementById('grade-filter').value   = '';
+  document.getElementById('section-filter').value = '';
+  document.getElementById('contact-filter').value = '';
+  updateSectionDropdown();
+  applyStudentFilters();
+}
+
+// Apply filters on page load if grade/section pre-selected from sidebar
+window.addEventListener('DOMContentLoaded', function() {
+  updateSectionDropdown();
+  applyStudentFilters();
+});
 document.querySelectorAll('.modal-backdrop').forEach(function(b){
   b.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 });

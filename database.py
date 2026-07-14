@@ -483,6 +483,13 @@ def get_dashboard_stats():
         AND emergency_contact_number != '' AND emergency_contact_number IS NOT NULL
     """).fetchone()[0]
 
+    missing_contact = conn.execute("""
+        SELECT COUNT(*) FROM students
+        WHERE (emergency_contact_name = '' OR emergency_contact_name IS NULL)
+           OR (emergency_contact_number = '' OR emergency_contact_number IS NULL)
+           OR (emergency_contact_address = '' OR emergency_contact_address IS NULL)
+    """).fetchone()[0]
+
     # Per grade breakdown
     grade_stats = conn.execute("""
         SELECT grade,
@@ -546,6 +553,7 @@ def get_dashboard_stats():
         "id_printed":       id_printed,
         "id_distributed":   id_distributed,
         "pending_print":    total - id_printed,
+        "missing_contact":  missing_contact,
         "grade_stats":      [dict(r) for r in grade_stats],
         "section_stats":    all_sections,
     }
@@ -669,6 +677,12 @@ def get_students_filtered(filter_type=None, grade=None, section_name=None):
         query += """ AND lrn != '' AND lrn IS NOT NULL
             AND emergency_contact_number != '' AND emergency_contact_number IS NOT NULL
             AND photo_url != '' AND photo_url IS NOT NULL"""
+    elif filter_type == "missing_contact":
+        query += """ AND (
+            (emergency_contact_name IS NULL OR emergency_contact_name = '') OR
+            (emergency_contact_number IS NULL OR emergency_contact_number = '') OR
+            (emergency_contact_address IS NULL OR emergency_contact_address = '')
+        )"""
 
     if grade:
         query += " AND grade = ?"
